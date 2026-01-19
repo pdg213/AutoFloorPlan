@@ -89,11 +89,7 @@
       font-size: 14px;
       color: #eaf2ff;
       line-height: 1.2;
-    }
-    .kpi .val small{
-      font-family: var(--mono);
-      color: #b6c2d6;
-      font-size: 12px;
+      white-space: pre-wrap;
     }
 
     /* Inputs bar */
@@ -173,7 +169,7 @@
       color: #b6c2d6;
       opacity: 0.9;
     }
-    input[type="number"], select{
+    input[type="text"], input[type="number"], select{
       width:100%;
       box-sizing:border-box;
       border-radius: 12px;
@@ -184,7 +180,7 @@
       font-size: 13.5px;
       outline:none;
     }
-    input[type="number"]:focus, select:focus{
+    input[type="text"]:focus, input[type="number"]:focus, select:focus{
       border-color: var(--accent);
       box-shadow: 0 0 0 3px rgba(96,165,250,0.18);
     }
@@ -204,6 +200,35 @@
       user-select:none;
     }
     .toggle input{ accent-color: var(--accent); }
+
+    /* Slider styling */
+    .sliderRow{
+      display:flex;
+      gap: 10px;
+      align-items:center;
+      margin-top: 6px;
+    }
+    input[type="range"]{
+      width: 100%;
+      accent-color: var(--accent);
+    }
+    .rangeVal{
+      font-family: var(--mono);
+      font-size: 12px;
+      color: #eaf2ff;
+      min-width: 64px;
+      text-align: right;
+    }
+    .ticks{
+      display:flex;
+      justify-content: space-between;
+      gap: 6px;
+      margin-top: 4px;
+      font-size: 10px;
+      color: #93a4c1;
+      font-family: var(--mono);
+      opacity: 0.9;
+    }
 
     /* Table card */
     .tableCard{
@@ -243,7 +268,7 @@
     table{
       width:100%;
       border-collapse: collapse;
-      min-width: 980px;
+      min-width: 1020px;
       font-size: 12px;
     }
     th, td{
@@ -276,7 +301,7 @@
       z-index: 2;
     }
     th.left, td.left{ min-width: 120px; max-width: 120px; }
-    th.left2, td.left2{ min-width: 290px; max-width: 290px; }
+    th.left2, td.left2{ min-width: 320px; max-width: 320px; }
 
     tr:last-child td{ border-bottom: none; }
 
@@ -308,6 +333,14 @@
       background: rgba(0,0,0,0.18);
       font-family: var(--mono);
       margin-left: 6px;
+    }
+    .inlineNote{
+      margin-top: 6px;
+      color: #93a4c1;
+      font-size: 11px;
+      line-height: 1.25;
+      font-family: var(--mono);
+      opacity: 0.95;
     }
   </style>
 </head>
@@ -365,30 +398,42 @@
       </div>
 
       <div class="inputsRow">
+        <!-- Invoice -->
         <div class="field">
           <div class="label">
             <span>Invoice Value (Purchase Price)</span>
             <span class="small">£</span>
           </div>
-          <input id="invoice" type="number" min="0" step="1000" value="1000000" />
+          <!-- text input so we can show commas -->
+          <input id="invoice" type="text" inputmode="numeric" value="1,000,000" />
+          <div class="inlineNote">Commas shown on blur.</div>
         </div>
 
+        <!-- Sale Price -->
         <div class="field">
           <div class="label">
             <span>Sale Price</span>
             <span class="small">£ (defaults +10%)</span>
           </div>
-          <input id="salePrice" type="number" min="0" step="1000" value="1100000" />
+          <input id="salePrice" type="text" inputmode="numeric" value="1,100,000" />
+          <div class="inlineNote">Auto-updates with invoice until overridden.</div>
         </div>
 
+        <!-- Advance slider -->
         <div class="field">
           <div class="label">
-            <span>Advance %</span>
+            <span>Advance Rate (slider)</span>
             <span class="small">%</span>
           </div>
-          <input id="advancePct" type="number" min="0" max="100" step="0.1" value="80" />
+          <div class="sliderRow">
+            <input id="advanceSlider" type="range" min="0" max="8" step="1" value="8" />
+            <div class="rangeVal" id="advancePctLabel">80%</div>
+          </div>
+          <div class="ticks" id="advanceTicks"></div>
+          <div class="inlineNote">Steps: 40,45,50,55,60,65,70,75,80.</div>
         </div>
 
+        <!-- Sale Month -->
         <div class="field">
           <div class="label">
             <span>Sale Month</span>
@@ -397,30 +442,40 @@
           <input id="saleMonth" type="number" min="1" step="1" value="12" />
         </div>
 
+        <!-- Processing Fee -->
         <div class="field">
           <div class="label">
             <span>Processing Fee (M0)</span>
             <span class="small">£</span>
           </div>
-          <input id="procFee" type="number" min="0" step="10" value="250" />
-          <div class="label" style="margin-top:8px;">
-            <span class="muted">Included in fees</span>
-            <span class="small">yes</span>
-          </div>
+          <input id="procFee" type="text" inputmode="numeric" value="250" />
+          <div class="inlineNote">Included in fees.</div>
         </div>
 
+        <!-- Unit fee: schedule + override -->
         <div class="field">
           <div class="label">
-            <span>Unit Fee % per Month</span>
+            <span>Monthly Unit Fee</span>
             <span class="small">%/mo</span>
           </div>
-          <input id="unitFeePct" type="number" min="0" step="0.01" value="0.65" />
+
+          <div class="toggle" aria-label="Unit fee schedule vs override">
+            <label><input type="checkbox" id="useSchedule" checked /> Use schedule (based on advance rate)</label>
+          </div>
+
+          <input id="unitFeePct" type="number" min="0" step="0.01" value="0.63" />
+
           <div class="toggle" aria-label="Unit fee base">
             <label><input type="radio" name="unitBase" value="invoice" checked /> charge on Invoice</label>
             <label><input type="radio" name="unitBase" value="advance" /> charge on Advance</label>
           </div>
+
+          <div class="inlineNote" id="scheduleNote">
+            Schedule: 80→0.63, 75→0.59, 70→0.55, 65→0.51, 60→0.47, 55→0.43, 50→0.39, 45→0.35, 40→0.31
+          </div>
         </div>
 
+        <!-- Capital repayment -->
         <div class="field">
           <div class="label">
             <span>Capital Repayment @ M6 (Day 180)</span>
@@ -433,6 +488,7 @@
           </div>
         </div>
 
+        <!-- Additional curtailment -->
         <div class="field">
           <div class="label">
             <span>Additional Curtailment (Optional)</span>
@@ -462,14 +518,28 @@
       </div>
       <div class="tableWrap" id="tableWrap"></div>
 
-      <div class="below" id="belowBlock">
-        <!-- populated dynamically -->
-      </div>
+      <div class="below" id="belowBlock"></div>
     </div>
 
   </div>
 
 <script>
+  /* -----------------------------
+     Schedule + slider mapping
+  ------------------------------*/
+  const ADV_STEPS = [40, 45, 50, 55, 60, 65, 70, 75, 80];
+  const UNIT_FEE_BY_ADV = {
+    80: 0.63,
+    75: 0.59,
+    70: 0.55,
+    65: 0.51,
+    60: 0.47,
+    55: 0.43,
+    50: 0.39,
+    45: 0.35,
+    40: 0.31
+  };
+
   /* -----------------------------
      State
   ------------------------------*/
@@ -478,6 +548,17 @@
   /* -----------------------------
      Utilities
   ------------------------------*/
+  function parseNumberFromText(s){
+    if (s == null) return 0;
+    const cleaned = String(s).replace(/[^0-9.\-]/g, "");
+    const v = Number(cleaned);
+    return isFinite(v) ? v : 0;
+  }
+  function formatIntWithCommas(n){
+    const v = Math.round(Number(n));
+    if (!isFinite(v)) return "";
+    return v.toLocaleString(undefined, {maximumFractionDigits: 0});
+  }
   function gbp(x){
     const sign = x < 0 ? "-" : "";
     const v = Math.abs(x);
@@ -561,16 +642,69 @@
   }
 
   /* -----------------------------
+     Advance slider helpers
+  ------------------------------*/
+  function getAdvancePctFromSlider(){
+    const idx = clampInt(document.getElementById("advanceSlider").value, 0, ADV_STEPS.length-1);
+    return ADV_STEPS[idx];
+  }
+  function setAdvanceSliderToPct(pct){
+    const idx = ADV_STEPS.indexOf(pct);
+    document.getElementById("advanceSlider").value = String(idx >= 0 ? idx : (ADV_STEPS.length-1));
+  }
+  function updateAdvanceLabels(){
+    const adv = getAdvancePctFromSlider();
+    document.getElementById("advancePctLabel").textContent = adv.toFixed(0) + "%";
+  }
+  function updateUnitFeeFromScheduleIfEnabled(){
+    const use = document.getElementById("useSchedule").checked;
+    const unitEl = document.getElementById("unitFeePct");
+    if (!use) {
+      unitEl.disabled = false;
+      return;
+    }
+    const adv = getAdvancePctFromSlider();
+    const fee = UNIT_FEE_BY_ADV[adv];
+    unitEl.value = (fee != null) ? fee.toFixed(2) : unitEl.value;
+    unitEl.disabled = true;
+  }
+
+  /* -----------------------------
+     Sale price default (+10%)
+  ------------------------------*/
+  function maybeUpdateSalePriceFromInvoice(){
+    if (salePriceTouched) return;
+    const invoice = parseNumberFromText(document.getElementById("invoice").value);
+    const suggested = Math.round(invoice * 1.10);
+    document.getElementById("salePrice").value = formatIntWithCommas(suggested);
+  }
+
+  /* -----------------------------
+     Format currency inputs (commas on blur)
+  ------------------------------*/
+  function attachCommaFormatting(id){
+    const el = document.getElementById(id);
+    el.addEventListener("blur", ()=>{
+      const v = parseNumberFromText(el.value);
+      // show commas on blur
+      el.value = formatIntWithCommas(v);
+    });
+    el.addEventListener("focus", ()=>{
+      // on focus, keep commas (user can still edit); we don't strip to avoid surprises
+    });
+  }
+
+  /* -----------------------------
      Model builder
   ------------------------------*/
   function buildModel(){
-    const invoice = Math.max(0, Number(document.getElementById("invoice").value) || 0);
-    const salePrice = Math.max(0, Number(document.getElementById("salePrice").value) || 0);
+    const invoice = Math.max(0, parseNumberFromText(document.getElementById("invoice").value));
+    const salePrice = Math.max(0, parseNumberFromText(document.getElementById("salePrice").value));
 
-    const advancePct = Math.max(0, Number(document.getElementById("advancePct").value) || 0) / 100;
+    const advancePct = getAdvancePctFromSlider() / 100;
     const saleMonth = clampInt(document.getElementById("saleMonth").value, 1, 120);
 
-    const procFee = Math.max(0, Number(document.getElementById("procFee").value) || 0);
+    const procFee = Math.max(0, parseNumberFromText(document.getElementById("procFee").value));
 
     const unitFeePctMo = Math.max(0, Number(document.getElementById("unitFeePct").value) || 0) / 100;
     const unitBase = getRadio("unitBase"); // invoice|advance
@@ -673,16 +807,16 @@
 
     // Equity cashflows (Option A): M0 = -(invoice - advance + procFee)
     // Monthly unit fees and any principal paydowns are equity outflows.
-    // Sale month inflow = +salePrice (loan payoff already in principal paydowns + final payoff lines treated as equity outflows)
+    // Sale month inflow = +salePrice
     const equity = Array(months+1).fill(0);
-    equity[0] = -(invoice - advanceAmt) - procFee; // equity check + processing fee
+    equity[0] = -(invoice - advanceAmt) - procFee;
     for (let m=1; m<=months; m++){
       equity[m] += -unitFeeMonthly;
-      equity[m] += lineCapRep[m];    // already negative
-      equity[m] += lineAddCurt[m];   // already negative
-      equity[m] += lineFinalPay[m];  // negative payoff at sale month
+      equity[m] += lineCapRep[m];
+      equity[m] += lineAddCurt[m];
+      equity[m] += lineFinalPay[m];
     }
-    equity[months] += salePrice; // sale proceeds inflow
+    equity[months] += salePrice;
 
     const equityIrrMo = irrMonthly(equity);
     const equityIrr = isFinite(equityIrrMo) ? (Math.pow(1+equityIrrMo, 12) - 1) : NaN;
@@ -704,8 +838,7 @@
       absReturnDollar, absReturnPct,
       loanIrrMo, loanApr,
       equityIrr, moic,
-      lines: { lineAdvance, lineProcFee, lineUnitFee, lineCapRep, lineAddCurt, lineFinalPay, netLoan, principalBal },
-      equity
+      lines: { lineAdvance, lineProcFee, lineUnitFee, lineCapRep, lineAddCurt, lineFinalPay, netLoan, principalBal }
     };
   }
 
@@ -792,7 +925,6 @@
 
     document.getElementById("tableWrap").innerHTML = head + body + foot;
 
-    // Below-table block (sale price emphasized)
     const below = `
       <div>
         <strong>Sale price assumed at M${months}:</strong> ${gbp(m.salePrice)}
@@ -811,22 +943,13 @@
   }
 
   /* -----------------------------
-     Auto-default sale price (+10%)
-  ------------------------------*/
-  function maybeUpdateSalePriceFromInvoice(){
-    if (salePriceTouched) return;
-    const invoice = Math.max(0, Number(document.getElementById("invoice").value) || 0);
-    const suggested = Math.round(invoice * 1.10);
-    document.getElementById("salePrice").value = String(suggested);
-  }
-
-  /* -----------------------------
      Recalc
   ------------------------------*/
   function recalc(){
     populateCurtailmentMonthDropdown();
+    updateAdvanceLabels();
+    updateUnitFeeFromScheduleIfEnabled();
 
-    // keep additional base label in sync
     const capBase = getRadio("capBase");
     document.getElementById("addCurtBaseLabel").textContent = (capBase === "outstanding") ? "Outstanding" : "Invoice";
 
@@ -840,12 +963,17 @@
   ------------------------------*/
   function resetDefaults(){
     salePriceTouched = false;
-    document.getElementById("invoice").value = 1000000;
-    document.getElementById("advancePct").value = 80;
-    document.getElementById("saleMonth").value = 12;
-    document.getElementById("procFee").value = 250;
 
-    document.getElementById("unitFeePct").value = 0.65;
+    document.getElementById("invoice").value = "1,000,000";
+    document.getElementById("salePrice").value = "1,100,000";
+
+    setAdvanceSliderToPct(80);
+    updateAdvanceLabels();
+
+    document.getElementById("saleMonth").value = 12;
+    document.getElementById("procFee").value = "250";
+
+    document.getElementById("useSchedule").checked = true;
     document.querySelector(`input[name="unitBase"][value="invoice"]`).checked = true;
 
     document.getElementById("capRepPct").value = 10;
@@ -856,8 +984,16 @@
     populateCurtailmentMonthDropdown();
     document.getElementById("addCurtMonth").value = "6";
 
-    maybeUpdateSalePriceFromInvoice();
+    updateUnitFeeFromScheduleIfEnabled();
     recalc();
+  }
+
+  /* -----------------------------
+     Init ticks on slider
+  ------------------------------*/
+  function initAdvanceTicks(){
+    const ticks = document.getElementById("advanceTicks");
+    ticks.innerHTML = ADV_STEPS.map(x => `<span>${x}</span>`).join("");
   }
 
   /* -----------------------------
@@ -866,7 +1002,12 @@
   document.getElementById("recalc").addEventListener("click", recalc);
   document.getElementById("reset").addEventListener("click", resetDefaults);
 
-  // Invoice changes -> update sale price unless user touched it
+  // Comma formatting on blur
+  attachCommaFormatting("invoice");
+  attachCommaFormatting("salePrice");
+  attachCommaFormatting("procFee");
+
+  // Invoice changes -> update sale price unless user touched it (recalc on input)
   document.getElementById("invoice").addEventListener("input", ()=>{
     maybeUpdateSalePriceFromInvoice();
     recalc();
@@ -878,8 +1019,26 @@
     recalc();
   });
 
+  // Advance slider
+  document.getElementById("advanceSlider").addEventListener("input", ()=>{
+    updateAdvanceLabels();
+    updateUnitFeeFromScheduleIfEnabled();
+    recalc();
+  });
+
+  // Use schedule toggle
+  document.getElementById("useSchedule").addEventListener("change", ()=>{
+    updateUnitFeeFromScheduleIfEnabled();
+    recalc();
+  });
+
+  // Unit fee manual edits only matter when override is enabled
+  document.getElementById("unitFeePct").addEventListener("input", ()=>{
+    recalc();
+  });
+
   // Other inputs
-  ["advancePct","saleMonth","procFee","unitFeePct","capRepPct","addCurtPct","addCurtMonth"].forEach(id=>{
+  ["saleMonth","capRepPct","addCurtPct","addCurtMonth"].forEach(id=>{
     document.getElementById(id).addEventListener("input", ()=>{
       if (id === "saleMonth") populateCurtailmentMonthDropdown();
       recalc();
@@ -889,8 +1048,11 @@
   document.querySelectorAll('input[name="capBase"]').forEach(el=>el.addEventListener("change", recalc));
 
   // init
+  initAdvanceTicks();
   populateCurtailmentMonthDropdown();
-  maybeUpdateSalePriceFromInvoice();
+  setAdvanceSliderToPct(80);
+  updateAdvanceLabels();
+  updateUnitFeeFromScheduleIfEnabled();
   recalc();
 </script>
 </body>
