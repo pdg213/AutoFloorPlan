@@ -117,8 +117,18 @@
       font-family: var(--mono);
       margin-left: 6px;
     }
-    .kpiNarrative{
+
+    /* Narrative as clickable row + drawer */
+    .narrativeWrap{
       margin-top: 10px;
+    }
+    .narrativeToggle{
+      width:100%;
+      text-align:left;
+      display:flex;
+      align-items:flex-start;
+      justify-content: space-between;
+      gap: 10px;
       padding: 10px 12px;
       border-radius: 14px;
       border: 1px solid rgba(38,52,79,0.9);
@@ -126,10 +136,127 @@
       color: #cbd5e1;
       font-size: 12.5px;
       line-height: 1.4;
+      cursor: pointer;
+      user-select:none;
+      -webkit-tap-highlight-color: transparent;
     }
-    .kpiNarrative strong{
+    .narrativeToggle strong{
       color:#eaf2ff;
       font-weight:800;
+    }
+    .narrativeToggle:hover{
+      border-color: rgba(96,165,250,0.45);
+      box-shadow: 0 0 0 3px rgba(96,165,250,0.10);
+    }
+    .chev{
+      margin-top: 2px;
+      width: 18px;
+      height: 18px;
+      flex: 0 0 auto;
+      color: #c7d2fe;
+      opacity: 0.9;
+      transition: transform 220ms ease;
+    }
+    .narrativeToggle[aria-expanded="true"] .chev{
+      transform: rotate(180deg);
+    }
+
+    .drawer{
+      overflow: hidden;
+      max-height: 0;
+      opacity: 0;
+      transform: translateY(-6px);
+      transition: max-height 260ms ease, opacity 240ms ease, transform 240ms ease;
+      border-radius: 14px;
+    }
+    .drawer.open{
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .drawerInner{
+      margin-top: 10px;
+      padding: 12px 12px 10px;
+      border: 1px solid rgba(38,52,79,0.9);
+      background: linear-gradient(180deg, rgba(0,0,0,0.22), rgba(0,0,0,0.14));
+      border-radius: 14px;
+      box-shadow: 0 18px 42px rgba(0,0,0,0.40);
+    }
+    .drawerTitle{
+      display:flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 10px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+    .drawerTitle h3{
+      margin:0;
+      font-size: 12.5px;
+      font-weight: 800;
+      color:#eaf2ff;
+      letter-spacing: 0.2px;
+    }
+    .drawerTitle .small{
+      margin:0;
+      font-size: 11px;
+      color:#93a4c1;
+      font-family: var(--mono);
+    }
+    .drawerGrid{
+      display:grid;
+      grid-template-columns: repeat(2, minmax(280px, 1fr));
+      gap: 10px;
+    }
+    @media (max-width: 900px){
+      .drawerGrid{ grid-template-columns: 1fr; }
+    }
+    .drawerCard{
+      border: 1px solid rgba(38,52,79,0.85);
+      background: rgba(0,0,0,0.18);
+      border-radius: 14px;
+      padding: 10px 10px 9px;
+    }
+    .drawerCard .hdr{
+      font-weight: 800;
+      color:#eaf2ff;
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+    .kv{
+      display:grid;
+      grid-template-columns: 1fr auto;
+      gap: 6px 10px;
+      font-size: 12px;
+      align-items: baseline;
+    }
+    .kv .k{
+      color:#cbd5e1;
+    }
+    .kv .v{
+      color:#eaf2ff;
+      font-family: var(--mono);
+      text-align:right;
+      white-space: nowrap;
+    }
+    .kv .subk{
+      color:#93a4c1;
+      font-family: var(--mono);
+      font-size: 11px;
+      margin-left: 0;
+    }
+    .kv .v.muted{
+      color:#c7d2fe;
+    }
+    .divider{
+      height:1px;
+      background: rgba(38,52,79,0.65);
+      margin: 8px 0;
+    }
+    .note{
+      margin-top: 8px;
+      color:#93a4c1;
+      font-size: 11.5px;
+      line-height: 1.35;
     }
 
     /* Tooltip */
@@ -466,7 +593,73 @@
         </div>
       </div>
 
-      <div class="kpiNarrative" id="kpiNarrative">—</div>
+      <!-- Narrative + Drawer -->
+      <div class="narrativeWrap">
+        <div class="narrativeToggle" id="narrativeToggle" role="button" tabindex="0" aria-expanded="false" aria-controls="narrativeDrawer">
+          <div id="kpiNarrative">—</div>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+
+        <div class="drawer" id="narrativeDrawer">
+          <div class="drawerInner">
+            <div class="drawerTitle">
+              <h3>Quick cashflow audit</h3>
+              <p class="small">Built from the same cashflows used in KPIs</p>
+            </div>
+
+            <div class="drawerGrid">
+              <div class="drawerCard">
+                <div class="hdr">Unit economics</div>
+                <div class="kv">
+                  <div class="k">Purchase price (invoice)</div><div class="v" id="drInvoice">—</div>
+                  <div class="k">Sale price</div><div class="v" id="drSale">—</div>
+
+                  <div class="divider" style="grid-column:1/-1;"></div>
+
+                  <div class="k">Processing fee (M0)</div><div class="v" id="drProc">—</div>
+                  <div class="k">Total unit fees (M1–MN)</div><div class="v" id="drUnitFees">—</div>
+                  <div class="k"><span class="subk">Total interest & fees</span></div><div class="v muted" id="drTotalFees">—</div>
+
+                  <div class="divider" style="grid-column:1/-1;"></div>
+
+                  <div class="k">Net profit after fees</div><div class="v" id="drProfit">—</div>
+                  <div class="k"><span class="subk">Absolute return (% of invoice)</span></div><div class="v muted" id="drAbsPct">—</div>
+                </div>
+              </div>
+
+              <div class="drawerCard">
+                <div class="hdr">Financing + equity tracking</div>
+                <div class="kv">
+                  <div class="k">Advance amount</div><div class="v" id="drAdvance">—</div>
+                  <div class="k"><span class="subk">Equity at purchase (invoice − advance)</span></div><div class="v muted" id="drDownPay">—</div>
+
+                  <div class="divider" style="grid-column:1/-1;"></div>
+
+                  <div class="k">Curtailments / principal paydowns (combined)</div><div class="v" id="drCurtail">—</div>
+                  <div class="k">Debt repaid at exit (remaining principal)</div><div class="v" id="drDebtExit">—</div>
+
+                  <div class="divider" style="grid-column:1/-1;"></div>
+
+                  <div class="k">Total equity contributions</div><div class="v" id="drEqContrib">—</div>
+                  <div class="k">Total equity distributions</div><div class="v" id="drEqDistrib">—</div>
+                  <div class="k"><span class="subk">MOIC (distrib / contrib)</span></div><div class="v muted" id="drMoic">—</div>
+
+                  <div class="divider" style="grid-column:1/-1;"></div>
+
+                  <div class="k">Profit breakeven sale price</div><div class="v" id="drBreakEven">—</div>
+                  <div class="k"><span class="subk">Sale price for 30% equity IRR</span></div><div class="v muted" id="drTarget30">—</div>
+                </div>
+
+                <div class="note">
+                  Breakeven above is profit breakeven (invoice + fees). MOIC can differ from 1.0x because curtailments change the timing of equity cashflows.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <!-- shared tooltip element -->
       <div class="tooltip" id="tooltip" aria-hidden="true">
@@ -617,6 +810,9 @@
 
   let salePriceTouched = false;
   let lastModel = null;
+
+  // Drawer state
+  let drawerOpen = false;
 
   function parseNumberFromText(s){
     if (s == null) return 0;
@@ -864,12 +1060,19 @@
     // Equity cashflows (for equity IRR): treat fees + paydowns + payoff as equity outflows
     const equity = Array(months+1).fill(0);
     equity[0] = -(invoice - advanceAmt) - procFee;
+
+    // Track combined curtailments separately for the drawer
+    let curtailCombined = 0;
+
     for (let m=1; m<=months; m++){
       equity[m] += lineUnitFee[m];
       equity[m] += lineCapRep[m];
       equity[m] += lineAddCurt[m];
       equity[m] += lineFinalPay[m];
+
+      curtailCombined += -(lineCapRep[m] + lineAddCurt[m]); // both are negative in loan CFs
     }
+
     equity[months] += salePrice;
 
     const equityIrrMo = irrMonthly(equity);
@@ -881,7 +1084,6 @@
 
     // Exit debt payoff (remaining principal)
     const debtPayoffAtExit = -lineFinalPay[months];
-    const netProceedsSaleMinusDebt = salePrice - debtPayoffAtExit;
 
     // Break-even sale price (profit = 0 net of financing)
     const breakEvenSale = invoice + totalFees;
@@ -917,9 +1119,9 @@
       equityContrib, equityDistrib,
       moic,
       debtPayoffAtExit,
-      netProceedsSaleMinusDebt,
       breakEvenSale, breakEvenMoic,
       targetSaleFor30IRR,
+      curtailCombined,
       lines: { lineAdvance, lineProcFee, lineUnitFee, lineCapRep, lineAddCurt, lineFinalPay, netLoan, principalBalEnd }
     };
   }
@@ -947,6 +1149,34 @@
       `We purchased the vehicle at <strong>${gbp(m.invoice)}</strong> and need to sell it at <strong>${be}</strong> in order to make exactly <strong>£0</strong> net of financing fees/interest ` +
       `(≈ <strong>${beMoicTxt} MOIC</strong>). ` +
       `We need to sell it at <strong>${y}</strong> to realize a <strong>30% return on the equity (IRR)</strong>.`;
+  }
+
+  function renderDrawer(m){
+    // Unit economics
+    document.getElementById("drInvoice").textContent = gbp(m.invoice);
+    document.getElementById("drSale").textContent = gbp(m.salePrice);
+    document.getElementById("drProc").textContent = gbp(m.procFee);
+    document.getElementById("drUnitFees").textContent = gbp(m.totalUnitFees);
+    document.getElementById("drTotalFees").textContent = gbp(m.totalFees);
+
+    document.getElementById("drProfit").textContent = gbp(m.absReturnDollar);
+    document.getElementById("drAbsPct").textContent = isFinite(m.absReturnPct) ? pct(m.absReturnPct, 2) : "—";
+
+    // Financing + equity tracking
+    document.getElementById("drAdvance").textContent = gbp(m.advanceAmt);
+    const downPay = m.invoice - m.advanceAmt;
+    document.getElementById("drDownPay").textContent = gbp(downPay);
+
+    document.getElementById("drCurtail").textContent = gbp(m.curtailCombined);
+    document.getElementById("drDebtExit").textContent = gbp(m.debtPayoffAtExit);
+
+    document.getElementById("drEqContrib").textContent = gbp(m.equityContrib);
+    document.getElementById("drEqDistrib").textContent = gbp(m.equityDistrib);
+    document.getElementById("drMoic").textContent = isFinite(m.moic) ? (m.moic.toFixed(2) + "x") : "—";
+
+    document.getElementById("drBreakEven").textContent = gbp(m.breakEvenSale);
+    document.getElementById("drTarget30").textContent =
+      (isFinite(m.targetSaleFor30IRR) && m.targetSaleFor30IRR >= 0) ? gbp(m.targetSaleFor30IRR) : "—";
   }
 
   function renderTable(m){
@@ -1012,7 +1242,6 @@
     const below = `
       <div><strong>Sale price assumed at M${months}:</strong> ${gbp(m.salePrice)}</div>
       <div style="margin-top:6px;"><strong>Debt payoff at exit:</strong> ${gbp(m.debtPayoffAtExit)} (remaining principal)</div>
-      <div style="margin-top:6px;"><strong>Sale − Debt payoff:</strong> ${gbp(m.netProceedsSaleMinusDebt)}</div>
       <div style="margin-top:6px;"><strong>Total equity contributions:</strong> ${gbp(m.equityContrib)} | <strong>Total equity distributions:</strong> ${gbp(m.equityDistrib)}</div>
       <div style="margin-top:6px;"><strong>Total Int. and Fees:</strong> ${gbp(m.totalFees)} (Processing: ${gbp(m.procFee)}, Unit fees: ${gbp(m.totalUnitFees)})</div>
       <div style="margin-top:6px;"><strong>Profit net of financing:</strong> ${gbp(m.absReturnDollar)} (${isFinite(m.absReturnPct) ? pct(m.absReturnPct, 2) : "—"})</div>
@@ -1143,8 +1372,34 @@ Equity IRR (annual) = ${isFinite(m.equityIrr) ? pct(m.equityIrr, 2) : "—"}`;
     ticks.innerHTML = ADV_STEPS.map(x => `<span>${x}</span>`).join("");
   }
 
+  // Drawer helpers
+  function setDrawerOpen(open){
+    drawerOpen = open;
+    const toggle = document.getElementById("narrativeToggle");
+    const drawer = document.getElementById("narrativeDrawer");
+
+    toggle.setAttribute("aria-expanded", open ? "true" : "false");
+
+    if (open){
+      drawer.classList.add("open");
+      // Set max-height to allow smooth animation
+      // Temporarily set to scrollHeight
+      drawer.style.maxHeight = drawer.scrollHeight + "px";
+    } else {
+      drawer.style.maxHeight = "0px";
+      drawer.classList.remove("open");
+    }
+  }
+  function toggleDrawer(){
+    setDrawerOpen(!drawerOpen);
+  }
+  function syncDrawerHeight(){
+    const drawer = document.getElementById("narrativeDrawer");
+    if (!drawerOpen) return;
+    drawer.style.maxHeight = drawer.scrollHeight + "px";
+  }
+
   function recalc(){
-    // If anything blows up, make it obvious (and keep console useful)
     try{
       populateCurtailmentMonthDropdown();
       updateAdvanceLabels();
@@ -1157,7 +1412,10 @@ Equity IRR (annual) = ${isFinite(m.equityIrr) ? pct(m.equityIrr, 2) : "—"}`;
       lastModel = model;
 
       renderKpis(model);
+      renderDrawer(model);
       renderTable(model);
+
+      syncDrawerHeight();
 
       if (activeTooltipKey){
         const map = {
@@ -1174,8 +1432,6 @@ Equity IRR (annual) = ${isFinite(m.equityIrr) ? pct(m.equityIrr, 2) : "—"}`;
       }
     } catch (err){
       console.error("Recalc error:", err);
-      // Leave KPIs visible as "—" but provide a quick signal if needed:
-      // alert("Calculation error — open DevTools Console for details.");
     }
   }
 
@@ -1252,12 +1508,23 @@ Equity IRR (annual) = ${isFinite(m.equityIrr) ? pct(m.equityIrr, 2) : "—"}`;
   attachTooltipHandlers("kpiTileAbs", "abs");
   attachTooltipHandlers("kpiTileRoe", "roe");
 
+  // Narrative drawer toggle
+  const nt = document.getElementById("narrativeToggle");
+  nt.addEventListener("click", (e)=>{ toggleDrawer(); e.stopPropagation(); });
+  nt.addEventListener("keydown", (e)=>{
+    if (e.key === "Enter" || e.key === " "){
+      e.preventDefault();
+      toggleDrawer();
+    }
+  });
+
   // init
   initAdvanceTicks();
   populateCurtailmentMonthDropdown();
   setAdvanceSliderToPct(80);
   updateAdvanceLabels();
   updateUnitFeeFromScheduleIfEnabled();
+  setDrawerOpen(false);
   recalc();
 </script>
 </body>
