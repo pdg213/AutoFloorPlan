@@ -773,7 +773,7 @@
     // Loan cashflow lines (borrower view)
     const lineAdvance   = zeros();
     const lineProcFee   = zeros();
-    const lineUnitFee   = zeros();   // can vary by month
+    const lineUnitFee   = zeros();
     const lineCapRep    = zeros();
     const lineAddCurt   = zeros();
     const lineFinalPay  = zeros();
@@ -818,14 +818,12 @@
       principalBalEnd[m] = principal;
     }
 
-    // Unit fee:
-    // - Invoice base: invoice * rate each month
-    // - Advance base: prior month ending principal * rate (paydown at M6 reduces fee starting M7)
+    // Unit fee base
     for (let m=1; m<=months; m++){
       if (unitBase === "invoice"){
         lineUnitFee[m] = -(invoice * unitFeePctMo);
       } else {
-        const baseAmt = principalBalEnd[m-1];
+        const baseAmt = principalBalEnd[m-1]; // prior month ending principal
         lineUnitFee[m] = -(baseAmt * unitFeePctMo);
       }
     }
@@ -844,16 +842,16 @@
     const loanIrrMo = irrMonthly(netLoan);
     const loanApr = isFinite(loanIrrMo) ? (Math.pow(1+loanIrrMo, 12) - 1) : NaN;
 
-    // Total interest + fees: processing + sum of unit fees
+    // Total interest + fees
     let totalUnitFees = 0;
     for (let m=1; m<=months; m++) totalUnitFees += -lineUnitFee[m];
     const totalFees = procFee + totalUnitFees;
 
-    // Absolute return (profit net of financing costs)
+    // Profit net of financing
     const absReturnDollar = salePrice - invoice - totalFees;
     const absReturnPct = (invoice > 0) ? ((salePrice - totalFees)/invoice - 1) : NaN;
 
-    // Equity cashflows (for equity IRR):
+    // Equity cashflows (for equity IRR): (includes principal paydowns and payoff as equity outflows)
     const equity = Array(months+1).fill(0);
     equity[0] = -(invoice - advanceAmt) - procFee;
     for (let m=1; m<=months; m++){
@@ -867,21 +865,31 @@
     const equityIrrMo = irrMonthly(equity);
     const equityIrr = isFinite(equityIrrMo) ? (Math.pow(1+equityIrrMo, 12) - 1) : NaN;
 
-    // MOIC (net equity proceeds / total equity outflows)
+    // Total equity outflows (absolute value of negative equity cashflows)
     let equityOut = 0;
     for (const x of equity) if (x < 0) equityOut += -x;
-    const moic = (equityOut > 0) ? (salePrice / equityOut) : NaN;
 
-    // Break-even sale price per your definition:
-    // "sell for X => exactly £0 profit net of financing fees/interest"
+    // Remaining debt payoff at exit = the final payoff (a negative number)
+    const debtPayoffAtExit = -lineFinalPay[months]; // positive number
+
+    // Net proceeds to equity = sale price - remaining debt payoff
+    const netProceedsToEquity = salePrice - debtPayoffAtExit;
+
+    // MOIC (fixed): net proceeds to equity / total equity outflows
+    const moic = (equityOut > 0) ? (netProceedsToEquity / equityOut) : NaN;
+
+    // Break-even sale (profit BE): invoice + fees/interest
     const breakEvenSale = invoice + totalFees;
-    const breakEvenMoic = (equityOut > 0) ? (breakEvenSale / equityOut) : NaN;
 
-    // Target sale for 30% equity IRR (annual)
+    // Break-even MOIC at that sale price, using the same definition (net proceeds / equity out)
+    const netProceedsAtBreakEven = breakEvenSale - debtPayoffAtExit;
+    const breakEvenMoic = (equityOut > 0) ? (netProceedsAtBreakEven / equityOut) : NaN;
+
+    // Target sale for 30% equity IRR (annual), solved via terminal value
     const targetAnnual = 0.30;
     const rTargetMo = Math.pow(1 + targetAnnual, 1/12) - 1;
 
-    // Remove terminal sale from equity to solve for required terminal sale at target IRR
+    // Remove current terminal sale to isolate other flows
     const equityNoSale = equity.slice();
     equityNoSale[months] -= salePrice;
 
@@ -901,6 +909,8 @@
       loanIrrMo, loanApr,
       equityIrr, moic,
       equityOut,
+      debtPayoffAtExit,
+      netProceedsToEquity,
       breakEvenSale, breakEvenMoic,
       targetSaleFor30IRR,
       lines: { lineAdvance, lineProcFee, lineUnitFee, lineCapRep, lineAddCurt, lineFinalPay, netLoan, principalBalEnd }
@@ -922,7 +932,6 @@
     document.getElementById("kpiRoe").textContent =
       `${isFinite(m.moic) ? m.moic.toFixed(2) + "x" : "—"}  |  ${isFinite(m.equityIrr) ? pct(m.equityIrr, 2) : "—"}`;
 
-    // Narrative: break-even profit + 30% equity IRR
     const be = gbp(m.breakEvenSale);
     const beMoicTxt = isFinite(m.breakEvenMoic) ? `${m.breakEvenMoic.toFixed(2)}x` : "—";
     const y = (isFinite(m.targetSaleFor30IRR) && m.targetSaleFor30IRR >= 0) ? gbp(m.targetSaleFor30IRR) : "—";
@@ -995,13 +1004,15 @@
 
     const below = `
       <div><strong>Sale price assumed at M${months}:</strong> ${gbp(m.salePrice)}</div>
+      <div style="margin-top:6px;"><strong>Debt payoff at exit:</strong> ${gbp(m.debtPayoffAtExit)} (remaining principal)</div>
+      <div style="margin-top:6px;"><strong>Net proceeds to equity:</strong> ${gbp(m.netProceedsToEquity)}</div>
       <div style="margin-top:6px;"><strong>Total Int. and Fees:</strong> ${gbp(m.totalFees)} (Processing: ${gbp(m.procFee)}, Unit fees: ${gbp(m.totalUnitFees)})</div>
       <div style="margin-top:6px;"><strong>Profit net of financing:</strong> ${gbp(m.absReturnDollar)} (${isFinite(m.absReturnPct) ? pct(m.absReturnPct, 2) : "—"})</div>
     `;
     document.getElementById("belowBlock").innerHTML = below;
   }
 
-  /* Tooltip content (unchanged) */
+  /* Tooltip content (updated MOIC definition) */
   function setTooltipContent(kind, m){
     const titleEl = document.getElementById("ttTitle");
     const descEl = document.getElementById("ttDesc");
@@ -1033,7 +1044,7 @@ APR = (1 + ${isFinite(m.loanIrrMo) ? m.loanIrrMo.toFixed(6) : "—"})^12 − 1
 
     if (kind === "abs"){
       titleEl.textContent = "Absolute Return";
-      descEl.textContent = "Profit on the unit after fees, shown in £ and as a % of invoice per your definition.";
+      descEl.textContent = "Profit on the unit after financing costs, shown in £ and as a % of invoice per your definition.";
       formulaEl.textContent =
 `£ Return = SalePrice − Invoice − Fees
 % Return = (SalePrice − Fees) / Invoice − 1`;
@@ -1048,13 +1059,16 @@ Fees      = ${gbp(m.totalFees)}
 
     if (kind === "roe"){
       titleEl.textContent = "Return on Equity";
-      descEl.textContent = "Levered equity IRR is computed on equity cashflows; MOIC shown for convenience.";
+      descEl.textContent = "MOIC uses net proceeds to equity (sale minus remaining debt payoff), and IRR uses the full equity cashflow series.";
       formulaEl.textContent =
-`MOIC = SalePrice / Total Equity Outflows
+`Net Proceeds = SalePrice − Debt Payoff
+MOIC = Net Proceeds / Total Equity Outflows
 Equity IRR = IRR( equity cashflow series )`;
       numbersEl.textContent =
-`Total equity outflows = ${gbp(m.equityOut)}
-SalePrice              = ${gbp(m.salePrice)}
+`SalePrice     = ${gbp(m.salePrice)}
+Debt Payoff   = ${gbp(m.debtPayoffAtExit)}
+Net Proceeds  = ${gbp(m.netProceedsToEquity)}
+Equity Outflows (total) = ${gbp(m.equityOut)}
 
 MOIC = ${isFinite(m.moic) ? m.moic.toFixed(2) + "x" : "—"}
 Equity IRR (annual) = ${isFinite(m.equityIrr) ? pct(m.equityIrr, 2) : "—"}`;
@@ -1181,7 +1195,7 @@ Equity IRR (annual) = ${isFinite(m.equityIrr) ? pct(m.equityIrr, 2) : "—"}`;
     recalc();
   }
 
-  // Wire up events
+  // Events
   document.getElementById("recalc").addEventListener("click", recalc);
   document.getElementById("reset").addEventListener("click", resetDefaults);
 
