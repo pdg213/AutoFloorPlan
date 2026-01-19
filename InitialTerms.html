@@ -27,7 +27,6 @@
       padding: 0 16px 36px;
     }
 
-    /* Top KPI box */
     .hero{
       border: 1px solid var(--border);
       border-radius: 18px;
@@ -132,7 +131,6 @@
       font-weight:800;
     }
 
-    /* Tooltip */
     .tooltip{
       position: absolute;
       z-index: 9999;
@@ -177,7 +175,6 @@
       margin-bottom: 4px;
     }
 
-    /* Inputs bar */
     .inputsCard{
       border: 1px solid var(--border);
       border-radius: 18px;
@@ -286,7 +283,6 @@
     }
     .toggle input{ accent-color: var(--accent); }
 
-    /* Slider styling */
     .sliderRow{
       display:flex;
       gap: 10px;
@@ -323,7 +319,6 @@
       opacity: 0.95;
     }
 
-    /* Table card */
     .tableCard{
       border: 1px solid var(--border);
       border-radius: 18px;
@@ -421,7 +416,6 @@
 <body>
   <div class="wrap">
 
-    <!-- KPI / summary box -->
     <div class="hero">
       <div class="heroTop">
         <h1>Single Car Model <span class="pill">Loan APR vs Equity Returns</span></h1>
@@ -468,7 +462,6 @@
 
       <div class="kpiNarrative" id="kpiNarrative">—</div>
 
-      <!-- shared tooltip element -->
       <div class="tooltip" id="tooltip" aria-hidden="true">
         <div class="tTitle" id="ttTitle">—</div>
         <div class="tDesc" id="ttDesc">—</div>
@@ -485,7 +478,6 @@
       </div>
     </div>
 
-    <!-- Inputs -->
     <div class="inputsCard">
       <div class="inputsHeader">
         <h2>Inputs</h2>
@@ -597,7 +589,6 @@
       </div>
     </div>
 
-    <!-- Table -->
     <div class="tableCard">
       <div class="tableHeader">
         <h2>Loan Cashflows (for Loan IRR/APR)</h2>
@@ -645,11 +636,10 @@
     return Math.max(min, Math.min(max, v));
   }
   function getRadio(name){
-    const el = document.querySelector(`input[name="${name}"]:checked`);
+    const el = document.querySelector(\`input[name="\${name}"]:checked\`);
     return el ? el.value : null;
   }
 
-  // IRR / NPV helpers
   function npv(rate, cfs){
     let s = 0;
     for (let t=0; t<cfs.length; t++){
@@ -701,7 +691,7 @@
     for (let m=1; m<=maxM; m++){
       const opt = document.createElement("option");
       opt.value = String(m);
-      opt.textContent = `Month ${m}`;
+      opt.textContent = \`Month \${m}\`;
       sel.appendChild(opt);
     }
     sel.value = String(Math.min(Math.max(current, 1), maxM));
@@ -747,6 +737,16 @@
     });
   }
 
+  function sumContribDistrib(cfs){
+    let contrib = 0;
+    let distrib = 0;
+    for (const x of cfs){
+      if (x < 0) contrib += -x;
+      else distrib += x;
+    }
+    return { contrib, distrib };
+  }
+
   function buildModel(){
     const invoice = Math.max(0, parseNumberFromText(document.getElementById("invoice").value));
     const salePrice = Math.max(0, parseNumberFromText(document.getElementById("salePrice").value));
@@ -770,7 +770,6 @@
 
     const zeros = () => Array(months+1).fill(0);
 
-    // Loan cashflow lines (borrower view)
     const lineAdvance   = zeros();
     const lineProcFee   = zeros();
     const lineUnitFee   = zeros();
@@ -779,14 +778,11 @@
     const lineFinalPay  = zeros();
     const netLoan       = zeros();
 
-    // Principal balance end-of-month after principal payments
     const principalBalEnd = Array(months+1).fill(0);
 
-    // Loan: M0
     lineAdvance[0] = advanceAmt;
     lineProcFee[0] = -procFee;
 
-    // Build principal schedule
     let principal = advanceAmt;
     const events = [];
     if (months >= 6 && capRepPct > 0) events.push({m: 6, kind: "cap", pct: capRepPct});
@@ -818,17 +814,15 @@
       principalBalEnd[m] = principal;
     }
 
-    // Unit fee base
     for (let m=1; m<=months; m++){
       if (unitBase === "invoice"){
         lineUnitFee[m] = -(invoice * unitFeePctMo);
       } else {
-        const baseAmt = principalBalEnd[m-1]; // prior month ending principal
+        const baseAmt = principalBalEnd[m-1];
         lineUnitFee[m] = -(baseAmt * unitFeePctMo);
       }
     }
 
-    // Net loan CF for IRR
     for (let m=0; m<=months; m++){
       netLoan[m] =
         lineAdvance[m] +
@@ -842,16 +836,14 @@
     const loanIrrMo = irrMonthly(netLoan);
     const loanApr = isFinite(loanIrrMo) ? (Math.pow(1+loanIrrMo, 12) - 1) : NaN;
 
-    // Total interest + fees
     let totalUnitFees = 0;
     for (let m=1; m<=months; m++) totalUnitFees += -lineUnitFee[m];
     const totalFees = procFee + totalUnitFees;
 
-    // Profit net of financing
     const absReturnDollar = salePrice - invoice - totalFees;
     const absReturnPct = (invoice > 0) ? ((salePrice - totalFees)/invoice - 1) : NaN;
 
-    // Equity cashflows (for equity IRR): (includes principal paydowns and payoff as equity outflows)
+    // Equity CF series (same as before)
     const equity = Array(months+1).fill(0);
     equity[0] = -(invoice - advanceAmt) - procFee;
     for (let m=1; m<=months; m++){
@@ -865,31 +857,26 @@
     const equityIrrMo = irrMonthly(equity);
     const equityIrr = isFinite(equityIrrMo) ? (Math.pow(1+equityIrrMo, 12) - 1) : NaN;
 
-    // Total equity outflows (absolute value of negative equity cashflows)
-    let equityOut = 0;
-    for (const x of equity) if (x < 0) equityOut += -x;
+    const { contrib: equityContrib, distrib: equityDistrib } = sumContribDistrib(equity);
+    const moic = (equityContrib > 0) ? (equityDistrib / equityContrib) : NaN;
 
-    // Remaining debt payoff at exit = the final payoff (a negative number)
-    const debtPayoffAtExit = -lineFinalPay[months]; // positive number
+    const debtPayoffAtExit = -lineFinalPay[months];
+    const netProceedsSaleMinusDebt = salePrice - debtPayoffAtExit;
+    const exitDistributionToEquity = equity[months]; // includes sale, payoff, and that month’s fees
 
-    // Net proceeds to equity = sale price - remaining debt payoff
-    const netProceedsToEquity = salePrice - debtPayoffAtExit;
-
-    // MOIC (fixed): net proceeds to equity / total equity outflows
-    const moic = (equityOut > 0) ? (netProceedsToEquity / equityOut) : NaN;
-
-    // Break-even sale (profit BE): invoice + fees/interest
+    // Break-even sale (profit BE)
     const breakEvenSale = invoice + totalFees;
 
-    // Break-even MOIC at that sale price, using the same definition (net proceeds / equity out)
-    const netProceedsAtBreakEven = breakEvenSale - debtPayoffAtExit;
-    const breakEvenMoic = (equityOut > 0) ? (netProceedsAtBreakEven / equityOut) : NaN;
+    // Break-even MOIC: recompute distributions using the same CF series, only changing the terminal sale amount
+    const equityBE = equity.slice();
+    equityBE[months] += (breakEvenSale - salePrice);
+    const { contrib: beContrib, distrib: beDistrib } = sumContribDistrib(equityBE);
+    const breakEvenMoic = (beContrib > 0) ? (beDistrib / beContrib) : NaN;
 
-    // Target sale for 30% equity IRR (annual), solved via terminal value
+    // Target sale for 30% equity IRR (annual)
     const targetAnnual = 0.30;
     const rTargetMo = Math.pow(1 + targetAnnual, 1/12) - 1;
 
-    // Remove current terminal sale to isolate other flows
     const equityNoSale = equity.slice();
     equityNoSale[months] -= salePrice;
 
@@ -907,10 +894,12 @@
       totalUnitFees, totalFees,
       absReturnDollar, absReturnPct,
       loanIrrMo, loanApr,
-      equityIrr, moic,
-      equityOut,
+      equityIrr,
+      equityContrib, equityDistrib,
+      moic,
       debtPayoffAtExit,
-      netProceedsToEquity,
+      netProceedsSaleMinusDebt,
+      exitDistributionToEquity,
       breakEvenSale, breakEvenMoic,
       targetSaleFor30IRR,
       lines: { lineAdvance, lineProcFee, lineUnitFee, lineCapRep, lineAddCurt, lineFinalPay, netLoan, principalBalEnd }
@@ -1005,14 +994,15 @@
     const below = `
       <div><strong>Sale price assumed at M${months}:</strong> ${gbp(m.salePrice)}</div>
       <div style="margin-top:6px;"><strong>Debt payoff at exit:</strong> ${gbp(m.debtPayoffAtExit)} (remaining principal)</div>
-      <div style="margin-top:6px;"><strong>Net proceeds to equity:</strong> ${gbp(m.netProceedsToEquity)}</div>
+      <div style="margin-top:6px;"><strong>Sale − Debt payoff:</strong> ${gbp(m.netProceedsSaleMinusDebt)}</div>
+      <div style="margin-top:6px;"><strong>Exit distribution to equity (after that month’s fees/payoff):</strong> ${gbp(m.exitDistributionToEquity)}</div>
+      <div style="margin-top:6px;"><strong>Total equity contributions:</strong> ${gbp(m.equityContrib)} | <strong>Total equity distributions:</strong> ${gbp(m.equityDistrib)}</div>
       <div style="margin-top:6px;"><strong>Total Int. and Fees:</strong> ${gbp(m.totalFees)} (Processing: ${gbp(m.procFee)}, Unit fees: ${gbp(m.totalUnitFees)})</div>
       <div style="margin-top:6px;"><strong>Profit net of financing:</strong> ${gbp(m.absReturnDollar)} (${isFinite(m.absReturnPct) ? pct(m.absReturnPct, 2) : "—"})</div>
     `;
     document.getElementById("belowBlock").innerHTML = below;
   }
 
-  /* Tooltip content (updated MOIC definition) */
   function setTooltipContent(kind, m){
     const titleEl = document.getElementById("ttTitle");
     const descEl = document.getElementById("ttDesc");
@@ -1059,16 +1049,15 @@ Fees      = ${gbp(m.totalFees)}
 
     if (kind === "roe"){
       titleEl.textContent = "Return on Equity";
-      descEl.textContent = "MOIC uses net proceeds to equity (sale minus remaining debt payoff), and IRR uses the full equity cashflow series.";
+      descEl.textContent = "MOIC is computed as total equity distributions divided by total equity contributions (from the equity cashflow series).";
       formulaEl.textContent =
-`Net Proceeds = SalePrice − Debt Payoff
-MOIC = Net Proceeds / Total Equity Outflows
+`Contributions = Σ max(-EquityCF_t, 0)
+Distributions  = Σ max( EquityCF_t, 0)
+MOIC = Distributions / Contributions
 Equity IRR = IRR( equity cashflow series )`;
       numbersEl.textContent =
-`SalePrice     = ${gbp(m.salePrice)}
-Debt Payoff   = ${gbp(m.debtPayoffAtExit)}
-Net Proceeds  = ${gbp(m.netProceedsToEquity)}
-Equity Outflows (total) = ${gbp(m.equityOut)}
+`Total contributions = ${gbp(m.equityContrib)}
+Total distributions  = ${gbp(m.equityDistrib)}
 
 MOIC = ${isFinite(m.moic) ? m.moic.toFixed(2) + "x" : "—"}
 Equity IRR (annual) = ${isFinite(m.equityIrr) ? pct(m.equityIrr, 2) : "—"}`;
@@ -1195,7 +1184,6 @@ Equity IRR (annual) = ${isFinite(m.equityIrr) ? pct(m.equityIrr, 2) : "—"}`;
     recalc();
   }
 
-  // Events
   document.getElementById("recalc").addEventListener("click", recalc);
   document.getElementById("reset").addEventListener("click", resetDefaults);
 
@@ -1235,13 +1223,11 @@ Equity IRR (annual) = ${isFinite(m.equityIrr) ? pct(m.equityIrr, 2) : "—"}`;
   document.querySelectorAll('input[name="unitBase"]').forEach(el=>el.addEventListener("change", recalc));
   document.querySelectorAll('input[name="capBase"]').forEach(el=>el.addEventListener("change", recalc));
 
-  // Tooltip handlers
   attachTooltipHandlers("kpiTileLoanMo", "loanMo");
   attachTooltipHandlers("kpiTileLoanApr", "loanApr");
   attachTooltipHandlers("kpiTileAbs", "abs");
   attachTooltipHandlers("kpiTileRoe", "roe");
 
-  // init
   initAdvanceTicks();
   populateCurtailmentMonthDropdown();
   setAdvanceSliderToPct(80);
