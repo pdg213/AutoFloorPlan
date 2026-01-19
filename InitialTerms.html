@@ -27,6 +27,7 @@
       padding: 0 16px 36px;
     }
 
+    /* Top KPI box */
     .hero{
       border: 1px solid var(--border);
       border-radius: 18px;
@@ -131,6 +132,7 @@
       font-weight:800;
     }
 
+    /* Tooltip */
     .tooltip{
       position: absolute;
       z-index: 9999;
@@ -175,6 +177,7 @@
       margin-bottom: 4px;
     }
 
+    /* Inputs bar */
     .inputsCard{
       border: 1px solid var(--border);
       border-radius: 18px;
@@ -283,6 +286,7 @@
     }
     .toggle input{ accent-color: var(--accent); }
 
+    /* Slider styling */
     .sliderRow{
       display:flex;
       gap: 10px;
@@ -319,6 +323,7 @@
       opacity: 0.95;
     }
 
+    /* Table card */
     .tableCard{
       border: 1px solid var(--border);
       border-radius: 18px;
@@ -416,6 +421,7 @@
 <body>
   <div class="wrap">
 
+    <!-- KPI / summary box -->
     <div class="hero">
       <div class="heroTop">
         <h1>Single Car Model <span class="pill">Loan APR vs Equity Returns</span></h1>
@@ -462,6 +468,7 @@
 
       <div class="kpiNarrative" id="kpiNarrative">—</div>
 
+      <!-- shared tooltip element -->
       <div class="tooltip" id="tooltip" aria-hidden="true">
         <div class="tTitle" id="ttTitle">—</div>
         <div class="tDesc" id="ttDesc">—</div>
@@ -478,6 +485,7 @@
       </div>
     </div>
 
+    <!-- Inputs -->
     <div class="inputsCard">
       <div class="inputsHeader">
         <h2>Inputs</h2>
@@ -585,10 +593,10 @@
             <span class="small" id="addCurtBaseLabel">Invoice</span>
           </div>
         </div>
-
       </div>
     </div>
 
+    <!-- Table -->
     <div class="tableCard">
       <div class="tableHeader">
         <h2>Loan Cashflows (for Loan IRR/APR)</h2>
@@ -636,10 +644,11 @@
     return Math.max(min, Math.min(max, v));
   }
   function getRadio(name){
-    const el = document.querySelector(\`input[name="\${name}"]:checked\`);
+    const el = document.querySelector(`input[name="${name}"]:checked`);
     return el ? el.value : null;
   }
 
+  // IRR helpers
   function npv(rate, cfs){
     let s = 0;
     for (let t=0; t<cfs.length; t++){
@@ -681,6 +690,16 @@
     return (lo+hi)/2;
   }
 
+  function sumContribDistrib(cfs){
+    let contrib = 0;
+    let distrib = 0;
+    for (const x of cfs){
+      if (x < 0) contrib += -x;
+      else distrib += x;
+    }
+    return { contrib, distrib };
+  }
+
   function populateCurtailmentMonthDropdown(){
     const sel = document.getElementById("addCurtMonth");
     const saleMonth = clampInt(document.getElementById("saleMonth").value, 1, 120);
@@ -691,7 +710,7 @@
     for (let m=1; m<=maxM; m++){
       const opt = document.createElement("option");
       opt.value = String(m);
-      opt.textContent = \`Month \${m}\`;
+      opt.textContent = `Month ${m}`;
       sel.appendChild(opt);
     }
     sel.value = String(Math.min(Math.max(current, 1), maxM));
@@ -701,8 +720,8 @@
     const idx = clampInt(document.getElementById("advanceSlider").value, 0, ADV_STEPS.length-1);
     return ADV_STEPS[idx];
   }
-  function setAdvanceSliderToPct(pct){
-    const idx = ADV_STEPS.indexOf(pct);
+  function setAdvanceSliderToPct(pctVal){
+    const idx = ADV_STEPS.indexOf(pctVal);
     document.getElementById("advanceSlider").value = String(idx >= 0 ? idx : (ADV_STEPS.length-1));
   }
   function updateAdvanceLabels(){
@@ -737,16 +756,6 @@
     });
   }
 
-  function sumContribDistrib(cfs){
-    let contrib = 0;
-    let distrib = 0;
-    for (const x of cfs){
-      if (x < 0) contrib += -x;
-      else distrib += x;
-    }
-    return { contrib, distrib };
-  }
-
   function buildModel(){
     const invoice = Math.max(0, parseNumberFromText(document.getElementById("invoice").value));
     const salePrice = Math.max(0, parseNumberFromText(document.getElementById("salePrice").value));
@@ -770,6 +779,7 @@
 
     const zeros = () => Array(months+1).fill(0);
 
+    // Loan cashflow lines (borrower view)
     const lineAdvance   = zeros();
     const lineProcFee   = zeros();
     const lineUnitFee   = zeros();
@@ -778,11 +788,14 @@
     const lineFinalPay  = zeros();
     const netLoan       = zeros();
 
+    // Principal balance end-of-month after principal payments
     const principalBalEnd = Array(months+1).fill(0);
 
+    // Loan: M0
     lineAdvance[0] = advanceAmt;
     lineProcFee[0] = -procFee;
 
+    // Principal schedule
     let principal = advanceAmt;
     const events = [];
     if (months >= 6 && capRepPct > 0) events.push({m: 6, kind: "cap", pct: capRepPct});
@@ -814,15 +827,18 @@
       principalBalEnd[m] = principal;
     }
 
+    // Unit fee
     for (let m=1; m<=months; m++){
       if (unitBase === "invoice"){
         lineUnitFee[m] = -(invoice * unitFeePctMo);
       } else {
+        // Charged on prior month ending principal; M6 paydown reduces fee starting M7
         const baseAmt = principalBalEnd[m-1];
         lineUnitFee[m] = -(baseAmt * unitFeePctMo);
       }
     }
 
+    // Net loan CF for IRR
     for (let m=0; m<=months; m++){
       netLoan[m] =
         lineAdvance[m] +
@@ -836,14 +852,16 @@
     const loanIrrMo = irrMonthly(netLoan);
     const loanApr = isFinite(loanIrrMo) ? (Math.pow(1+loanIrrMo, 12) - 1) : NaN;
 
+    // Total fees
     let totalUnitFees = 0;
     for (let m=1; m<=months; m++) totalUnitFees += -lineUnitFee[m];
     const totalFees = procFee + totalUnitFees;
 
+    // Absolute return (your definition)
     const absReturnDollar = salePrice - invoice - totalFees;
     const absReturnPct = (invoice > 0) ? ((salePrice - totalFees)/invoice - 1) : NaN;
 
-    // Equity CF series (same as before)
+    // Equity cashflows (for equity IRR): treat fees + paydowns + payoff as equity outflows
     const equity = Array(months+1).fill(0);
     equity[0] = -(invoice - advanceAmt) - procFee;
     for (let m=1; m<=months; m++){
@@ -857,17 +875,18 @@
     const equityIrrMo = irrMonthly(equity);
     const equityIrr = isFinite(equityIrrMo) ? (Math.pow(1+equityIrrMo, 12) - 1) : NaN;
 
+    // MOIC (correct): total distributions / total contributions from equity CF series
     const { contrib: equityContrib, distrib: equityDistrib } = sumContribDistrib(equity);
     const moic = (equityContrib > 0) ? (equityDistrib / equityContrib) : NaN;
 
+    // Exit debt payoff (remaining principal)
     const debtPayoffAtExit = -lineFinalPay[months];
     const netProceedsSaleMinusDebt = salePrice - debtPayoffAtExit;
-    const exitDistributionToEquity = equity[months]; // includes sale, payoff, and that month’s fees
 
-    // Break-even sale (profit BE)
+    // Break-even sale price (profit = 0 net of financing)
     const breakEvenSale = invoice + totalFees;
 
-    // Break-even MOIC: recompute distributions using the same CF series, only changing the terminal sale amount
+    // Break-even MOIC: re-run contrib/distrib with terminal sale swapped to breakEvenSale
     const equityBE = equity.slice();
     equityBE[months] += (breakEvenSale - salePrice);
     const { contrib: beContrib, distrib: beDistrib } = sumContribDistrib(equityBE);
@@ -899,7 +918,6 @@
       moic,
       debtPayoffAtExit,
       netProceedsSaleMinusDebt,
-      exitDistributionToEquity,
       breakEvenSale, breakEvenMoic,
       targetSaleFor30IRR,
       lines: { lineAdvance, lineProcFee, lineUnitFee, lineCapRep, lineAddCurt, lineFinalPay, netLoan, principalBalEnd }
@@ -995,7 +1013,6 @@
       <div><strong>Sale price assumed at M${months}:</strong> ${gbp(m.salePrice)}</div>
       <div style="margin-top:6px;"><strong>Debt payoff at exit:</strong> ${gbp(m.debtPayoffAtExit)} (remaining principal)</div>
       <div style="margin-top:6px;"><strong>Sale − Debt payoff:</strong> ${gbp(m.netProceedsSaleMinusDebt)}</div>
-      <div style="margin-top:6px;"><strong>Exit distribution to equity (after that month’s fees/payoff):</strong> ${gbp(m.exitDistributionToEquity)}</div>
       <div style="margin-top:6px;"><strong>Total equity contributions:</strong> ${gbp(m.equityContrib)} | <strong>Total equity distributions:</strong> ${gbp(m.equityDistrib)}</div>
       <div style="margin-top:6px;"><strong>Total Int. and Fees:</strong> ${gbp(m.totalFees)} (Processing: ${gbp(m.procFee)}, Unit fees: ${gbp(m.totalUnitFees)})</div>
       <div style="margin-top:6px;"><strong>Profit net of financing:</strong> ${gbp(m.absReturnDollar)} (${isFinite(m.absReturnPct) ? pct(m.absReturnPct, 2) : "—"})</div>
@@ -1003,6 +1020,7 @@
     document.getElementById("belowBlock").innerHTML = below;
   }
 
+  /* Tooltip content */
   function setTooltipContent(kind, m){
     const titleEl = document.getElementById("ttTitle");
     const descEl = document.getElementById("ttDesc");
@@ -1013,13 +1031,11 @@
     if (kind === "loanMo"){
       titleEl.textContent = "Monthly Rate (Loan IRR)";
       descEl.textContent = "Monthly cost of the loan to the borrower, computed as the IRR of the loan cashflows (excluding sale proceeds).";
-      formulaEl.textContent =
-`IRR_monthly = IRR( [NetLoanCF_M0, NetLoanCF_M1, …, NetLoanCF_MN] )`;
+      formulaEl.textContent = `IRR_monthly = IRR( [NetLoanCF_M0, NetLoanCF_M1, …, NetLoanCF_MN] )`;
       numbersEl.textContent =
-`NetLoanCF series length: ${m.saleMonth + 1} months
-M0 (net): ${gbp(m.lines.netLoan[0])}
-M${m.saleMonth} (net): ${gbp(m.lines.netLoan[m.saleMonth])}
-Result: ${isFinite(m.loanIrrMo) ? pct(m.loanIrrMo, 3) : "—"}`;
+`M0 net = ${gbp(m.lines.netLoan[0])}
+M${m.saleMonth} net = ${gbp(m.lines.netLoan[m.saleMonth])}
+Result = ${isFinite(m.loanIrrMo) ? pct(m.loanIrrMo, 3) : "—"}`;
     }
 
     if (kind === "loanApr"){
@@ -1028,8 +1044,7 @@ Result: ${isFinite(m.loanIrrMo) ? pct(m.loanIrrMo, 3) : "—"}`;
       formulaEl.textContent = `APR = (1 + IRR_monthly)^12 − 1`;
       numbersEl.textContent =
 `IRR_monthly = ${isFinite(m.loanIrrMo) ? pct(m.loanIrrMo, 3) : "—"}
-APR = (1 + ${isFinite(m.loanIrrMo) ? m.loanIrrMo.toFixed(6) : "—"})^12 − 1
-= ${isFinite(m.loanApr) ? pct(m.loanApr, 2) : "—"}`;
+APR = ${isFinite(m.loanApr) ? pct(m.loanApr, 2) : "—"}`;
     }
 
     if (kind === "abs"){
@@ -1053,11 +1068,10 @@ Fees      = ${gbp(m.totalFees)}
       formulaEl.textContent =
 `Contributions = Σ max(-EquityCF_t, 0)
 Distributions  = Σ max( EquityCF_t, 0)
-MOIC = Distributions / Contributions
-Equity IRR = IRR( equity cashflow series )`;
+MOIC = Distributions / Contributions`;
       numbersEl.textContent =
-`Total contributions = ${gbp(m.equityContrib)}
-Total distributions  = ${gbp(m.equityDistrib)}
+`Contributions = ${gbp(m.equityContrib)}
+Distributions  = ${gbp(m.equityDistrib)}
 
 MOIC = ${isFinite(m.moic) ? m.moic.toFixed(2) + "x" : "—"}
 Equity IRR (annual) = ${isFinite(m.equityIrr) ? pct(m.equityIrr, 2) : "—"}`;
@@ -1111,6 +1125,7 @@ Equity IRR (annual) = ${isFinite(m.equityIrr) ? pct(m.equityIrr, 2) : "—"}`;
     el.addEventListener("focus", ()=> showTooltipFor(el, kind));
     el.addEventListener("blur", ()=> hideTooltip());
 
+    // tap/click toggle
     el.addEventListener("click", (e)=>{
       const tt = document.getElementById("tooltip");
       const isOpen = tt.classList.contains("show") && activeTooltipKey === kind;
@@ -1129,31 +1144,38 @@ Equity IRR (annual) = ${isFinite(m.equityIrr) ? pct(m.equityIrr, 2) : "—"}`;
   }
 
   function recalc(){
-    populateCurtailmentMonthDropdown();
-    updateAdvanceLabels();
-    updateUnitFeeFromScheduleIfEnabled();
+    // If anything blows up, make it obvious (and keep console useful)
+    try{
+      populateCurtailmentMonthDropdown();
+      updateAdvanceLabels();
+      updateUnitFeeFromScheduleIfEnabled();
 
-    const capBase = getRadio("capBase");
-    document.getElementById("addCurtBaseLabel").textContent = (capBase === "outstanding") ? "Outstanding" : "Invoice";
+      const capBase = getRadio("capBase");
+      document.getElementById("addCurtBaseLabel").textContent = (capBase === "outstanding") ? "Outstanding" : "Invoice";
 
-    const model = buildModel();
-    lastModel = model;
+      const model = buildModel();
+      lastModel = model;
 
-    renderKpis(model);
-    renderTable(model);
+      renderKpis(model);
+      renderTable(model);
 
-    if (activeTooltipKey){
-      const map = {
-        loanMo: document.getElementById("kpiTileLoanMo"),
-        loanApr: document.getElementById("kpiTileLoanApr"),
-        abs: document.getElementById("kpiTileAbs"),
-        roe: document.getElementById("kpiTileRoe")
-      };
-      const anchor = map[activeTooltipKey];
-      if (anchor){
-        setTooltipContent(activeTooltipKey, lastModel);
-        positionTooltip(anchor);
+      if (activeTooltipKey){
+        const map = {
+          loanMo: document.getElementById("kpiTileLoanMo"),
+          loanApr: document.getElementById("kpiTileLoanApr"),
+          abs: document.getElementById("kpiTileAbs"),
+          roe: document.getElementById("kpiTileRoe")
+        };
+        const anchor = map[activeTooltipKey];
+        if (anchor){
+          setTooltipContent(activeTooltipKey, lastModel);
+          positionTooltip(anchor);
+        }
       }
+    } catch (err){
+      console.error("Recalc error:", err);
+      // Leave KPIs visible as "—" but provide a quick signal if needed:
+      // alert("Calculation error — open DevTools Console for details.");
     }
   }
 
@@ -1170,10 +1192,10 @@ Equity IRR (annual) = ${isFinite(m.equityIrr) ? pct(m.equityIrr, 2) : "—"}`;
     document.getElementById("procFee").value = "250";
 
     document.getElementById("useSchedule").checked = true;
-    document.querySelector(`input[name="unitBase"][value="invoice"]`).checked = true;
+    document.querySelector('input[name="unitBase"][value="invoice"]').checked = true;
 
     document.getElementById("capRepPct").value = 10;
-    document.querySelector(`input[name="capBase"][value="invoice"]`).checked = true;
+    document.querySelector('input[name="capBase"][value="invoice"]').checked = true;
 
     document.getElementById("addCurtPct").value = 0;
 
@@ -1184,6 +1206,7 @@ Equity IRR (annual) = ${isFinite(m.equityIrr) ? pct(m.equityIrr, 2) : "—"}`;
     recalc();
   }
 
+  // Events
   document.getElementById("recalc").addEventListener("click", recalc);
   document.getElementById("reset").addEventListener("click", resetDefaults);
 
@@ -1223,11 +1246,13 @@ Equity IRR (annual) = ${isFinite(m.equityIrr) ? pct(m.equityIrr, 2) : "—"}`;
   document.querySelectorAll('input[name="unitBase"]').forEach(el=>el.addEventListener("change", recalc));
   document.querySelectorAll('input[name="capBase"]').forEach(el=>el.addEventListener("change", recalc));
 
+  // Tooltip handlers
   attachTooltipHandlers("kpiTileLoanMo", "loanMo");
   attachTooltipHandlers("kpiTileLoanApr", "loanApr");
   attachTooltipHandlers("kpiTileAbs", "abs");
   attachTooltipHandlers("kpiTileRoe", "roe");
 
+  // init
   initAdvanceTicks();
   populateCurtailmentMonthDropdown();
   setAdvanceSliderToPct(80);
