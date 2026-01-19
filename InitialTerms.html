@@ -97,6 +97,15 @@
       line-height: 1.2;
       white-space: pre-wrap;
     }
+    .kpi .subval{
+      margin-top: 6px;
+      font-family: var(--mono);
+      font-size: 11.5px;
+      color: #c7d2fe;
+      line-height: 1.2;
+      opacity: 0.95;
+      white-space: nowrap;
+    }
     .pill{
       display:inline-block;
       padding: 2px 8px;
@@ -107,6 +116,20 @@
       background: rgba(0,0,0,0.18);
       font-family: var(--mono);
       margin-left: 6px;
+    }
+    .kpiNarrative{
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(38,52,79,0.9);
+      background: rgba(0,0,0,0.18);
+      color: #cbd5e1;
+      font-size: 12.5px;
+      line-height: 1.4;
+    }
+    .kpiNarrative strong{
+      color:#eaf2ff;
+      font-weight:800;
     }
 
     /* Tooltip */
@@ -120,13 +143,11 @@
       box-shadow: 0 20px 50px rgba(0,0,0,0.55);
       padding: 10px 12px;
       display: none;
-      pointer-events: none; /* hover doesn't fight mouse */
+      pointer-events: none;
       transform: translateY(6px);
       backdrop-filter: blur(6px);
     }
-    .tooltip.show{
-      display:block;
-    }
+    .tooltip.show{ display:block; }
     .tooltip .tTitle{
       font-weight: 800;
       color: #eaf2ff;
@@ -154,9 +175,6 @@
       font-family: var(--sans);
       font-size: 11px;
       margin-bottom: 4px;
-    }
-    .tooltip .tFormula, .tooltip .tNumbers{
-      color: #dbeafe;
     }
 
     /* Inputs bar */
@@ -408,7 +426,7 @@
       <div class="heroTop">
         <h1>Single Car Model <span class="pill">Loan APR vs Equity Returns</span></h1>
         <p class="sub">
-          Loan IRR/APR excludes sale proceeds. Equity MOIC/IRR uses sale price and treats fees + curtailments as equity cash out.
+          Loan IRR/APR excludes sale proceeds. Equity IRR uses sale price and treats fees + curtailments as equity cash out.
         </p>
       </div>
 
@@ -426,24 +444,29 @@
           <div class="val" id="kpiSalePrice">—</div>
         </div>
 
-        <!-- Tooltip KPIs -->
         <div class="kpi" id="kpiTileLoanMo" role="button" tabindex="0" aria-label="Monthly Rate details">
           <div class="name">Monthly Rate (Loan IRR)</div>
           <div class="val" id="kpiLoanIrrMo">—</div>
         </div>
+
         <div class="kpi" id="kpiTileLoanApr" role="button" tabindex="0" aria-label="APR details">
           <div class="name">APR (Loan)</div>
           <div class="val" id="kpiLoanApr">—</div>
+          <div class="subval" id="kpiTotalIntFees">Total Int. and Fees: —</div>
         </div>
+
         <div class="kpi" id="kpiTileAbs" role="button" tabindex="0" aria-label="Absolute Return details">
           <div class="name">Absolute Return</div>
           <div class="val" id="kpiAbsReturn">—</div>
         </div>
+
         <div class="kpi" id="kpiTileRoe" role="button" tabindex="0" aria-label="Return on Equity details">
           <div class="name">Return on Equity</div>
           <div class="val" id="kpiRoe">—</div>
         </div>
       </div>
+
+      <div class="kpiNarrative" id="kpiNarrative">—</div>
 
       <!-- shared tooltip element -->
       <div class="tooltip" id="tooltip" aria-hidden="true">
@@ -452,12 +475,12 @@
 
         <div class="tBlock">
           <div class="tLabel">Formula</div>
-          <div class="tFormula" id="ttFormula">—</div>
+          <div id="ttFormula">—</div>
         </div>
 
         <div class="tBlock">
           <div class="tLabel">With numbers</div>
-          <div class="tNumbers" id="ttNumbers">—</div>
+          <div id="ttNumbers">—</div>
         </div>
       </div>
     </div>
@@ -535,11 +558,12 @@
 
           <div class="toggle" aria-label="Unit fee base">
             <label><input type="radio" name="unitBase" value="invoice" checked /> charge on Invoice</label>
-            <label><input type="radio" name="unitBase" value="advance" /> charge on Advance</label>
+            <label><input type="radio" name="unitBase" value="advance" /> charge on Advance*</label>
           </div>
 
           <div class="inlineNote" id="scheduleNote">
             Schedule: 80→0.63, 75→0.59, 70→0.55, 65→0.51, 60→0.47, 55→0.43, 50→0.39, 45→0.35, 40→0.31
+            <br>*If charging on Advance, fee is computed on prior month ending principal (so it steps down after paydowns, starting M7).
           </div>
         </div>
 
@@ -589,21 +613,12 @@
   </div>
 
 <script>
-  /* -----------------------------
-     Schedule + slider mapping
-  ------------------------------*/
   const ADV_STEPS = [40, 45, 50, 55, 60, 65, 70, 75, 80];
   const UNIT_FEE_BY_ADV = {80:0.63,75:0.59,70:0.55,65:0.51,60:0.47,55:0.43,50:0.39,45:0.35,40:0.31};
 
-  /* -----------------------------
-     State
-  ------------------------------*/
   let salePriceTouched = false;
-  let lastModel = null; // keep latest model for tooltip numbers
+  let lastModel = null;
 
-  /* -----------------------------
-     Utilities
-  ------------------------------*/
   function parseNumberFromText(s){
     if (s == null) return 0;
     const cleaned = String(s).replace(/[^0-9.\-]/g, "");
@@ -634,9 +649,7 @@
     return el ? el.value : null;
   }
 
-  /* -----------------------------
-     IRR: monthly via bisection
-  ------------------------------*/
+  // IRR / NPV helpers
   function npv(rate, cfs){
     let s = 0;
     for (let t=0; t<cfs.length; t++){
@@ -678,9 +691,6 @@
     return (lo+hi)/2;
   }
 
-  /* -----------------------------
-     Month dropdown
-  ------------------------------*/
   function populateCurtailmentMonthDropdown(){
     const sel = document.getElementById("addCurtMonth");
     const saleMonth = clampInt(document.getElementById("saleMonth").value, 1, 120);
@@ -697,9 +707,6 @@
     sel.value = String(Math.min(Math.max(current, 1), maxM));
   }
 
-  /* -----------------------------
-     Advance slider helpers
-  ------------------------------*/
   function getAdvancePctFromSlider(){
     const idx = clampInt(document.getElementById("advanceSlider").value, 0, ADV_STEPS.length-1);
     return ADV_STEPS[idx];
@@ -725,9 +732,6 @@
     unitEl.disabled = true;
   }
 
-  /* -----------------------------
-     Sale price default (+10%)
-  ------------------------------*/
   function maybeUpdateSalePriceFromInvoice(){
     if (salePriceTouched) return;
     const invoice = parseNumberFromText(document.getElementById("invoice").value);
@@ -735,9 +739,6 @@
     document.getElementById("salePrice").value = formatIntWithCommas(suggested);
   }
 
-  /* -----------------------------
-     Format currency inputs (commas on blur)
-  ------------------------------*/
   function attachCommaFormatting(id){
     const el = document.getElementById(id);
     el.addEventListener("blur", ()=>{
@@ -746,9 +747,6 @@
     });
   }
 
-  /* -----------------------------
-     Model builder
-  ------------------------------*/
   function buildModel(){
     const invoice = Math.max(0, parseNumberFromText(document.getElementById("invoice").value));
     const salePrice = Math.max(0, parseNumberFromText(document.getElementById("salePrice").value));
@@ -770,27 +768,25 @@
     const months = saleMonth;
     const advanceAmt = invoice * advancePct;
 
-    const unitFeeBaseAmt = (unitBase === "advance") ? advanceAmt : invoice;
-    const unitFeeMonthly = unitFeeBaseAmt * unitFeePctMo;
-
     const zeros = () => Array(months+1).fill(0);
 
+    // Loan cashflow lines (borrower view)
     const lineAdvance   = zeros();
     const lineProcFee   = zeros();
-    const lineUnitFee   = zeros();
+    const lineUnitFee   = zeros();   // now can vary by month
     const lineCapRep    = zeros();
     const lineAddCurt   = zeros();
     const lineFinalPay  = zeros();
     const netLoan       = zeros();
-    const principalBal  = Array(months+1).fill(0);
 
+    // Principal balance end-of-month after principal payments (and payoff at sale month)
+    const principalBalEnd = Array(months+1).fill(0);
+
+    // Loan: M0
     lineAdvance[0] = advanceAmt;
     lineProcFee[0] = -procFee;
 
-    for (let m=1; m<=months; m++){
-      lineUnitFee[m] = -unitFeeMonthly;
-    }
-
+    // Build principal schedule (independent of unit fees)
     let principal = advanceAmt;
     const events = [];
     if (months >= 6 && capRepPct > 0) events.push({m: 6, kind: "cap", pct: capRepPct});
@@ -805,6 +801,7 @@
 
     let eIdx = 0;
     for (let m=0; m<=months; m++){
+      // apply any principal events at this month
       while (eIdx < events.length && events[eIdx].m === m){
         const e = events[eIdx];
         const amt = Math.min(principal, curtailAmt(e.pct));
@@ -815,13 +812,29 @@
         }
         eIdx++;
       }
+
+      // final payoff at sale month after any scheduled curtailments that same month
       if (m === months){
         lineFinalPay[m] = -principal;
         principal = 0;
       }
-      principalBal[m] = principal;
+
+      principalBalEnd[m] = principal;
     }
 
+    // Unit fee schedule:
+    // - If base is Invoice: constant on invoice each month.
+    // - If base is Advance: charge based on prior month ENDING principal (so paydown at M6 reduces fee starting M7).
+    for (let m=1; m<=months; m++){
+      if (unitBase === "invoice"){
+        lineUnitFee[m] = -(invoice * unitFeePctMo);
+      } else {
+        const baseAmt = principalBalEnd[m-1]; // prior month ending principal
+        lineUnitFee[m] = -(baseAmt * unitFeePctMo);
+      }
+    }
+
+    // Net loan CF for IRR
     for (let m=0; m<=months; m++){
       netLoan[m] =
         lineAdvance[m] +
@@ -835,50 +848,71 @@
     const loanIrrMo = irrMonthly(netLoan);
     const loanApr = isFinite(loanIrrMo) ? (Math.pow(1+loanIrrMo, 12) - 1) : NaN;
 
-    const totalUnitFees = unitFeeMonthly * months;
+    // Total fees (interest + fees): processing + sum of unit fees
+    let totalUnitFees = 0;
+    for (let m=1; m<=months; m++) totalUnitFees += -lineUnitFee[m];
     const totalFees = procFee + totalUnitFees;
 
+    // Absolute return (per your definitions)
     const absReturnDollar = salePrice - invoice - totalFees;
     const absReturnPct = (invoice > 0) ? ((salePrice - totalFees)/invoice - 1) : NaN;
 
-    // Equity cashflows (short definition for tooltip)
+    // Equity cashflows (borrower/operator):
+    // M0: -(invoice - advance) - proc fee
+    // M1..MN: unit fees + any curtailments + final payoff
+    // MN: + sale price
     const equity = Array(months+1).fill(0);
     equity[0] = -(invoice - advanceAmt) - procFee;
     for (let m=1; m<=months; m++){
-      equity[m] += -unitFeeMonthly;
-      equity[m] += lineCapRep[m];
-      equity[m] += lineAddCurt[m];
-      equity[m] += lineFinalPay[m];
+      equity[m] += lineUnitFee[m];   // negative
+      equity[m] += lineCapRep[m];    // negative if any
+      equity[m] += lineAddCurt[m];   // negative if any
+      equity[m] += lineFinalPay[m];  // negative (repay remaining)
     }
     equity[months] += salePrice;
 
     const equityIrrMo = irrMonthly(equity);
     const equityIrr = isFinite(equityIrrMo) ? (Math.pow(1+equityIrrMo, 12) - 1) : NaN;
 
-    let pos=0, neg=0;
+    // Total equity outflows (for break-even sale price)
+    let equityOut = 0;
     for (const x of equity){
-      if (x > 0) pos += x;
-      if (x < 0) neg += -x;
+      if (x < 0) equityOut += -x;
     }
-    const moic = (neg > 0) ? (pos / neg) : NaN;
+    const breakEvenSale = equityOut; // MOIC = 1x, single terminal inflow assumption
+
+    // Target sale for 30% equity IRR (annual), keep it short and deterministic:
+    // Solve NPV=0 at r_target_month for sale price S (only in last month).
+    const targetAnnual = 0.30;
+    const rTargetMo = Math.pow(1 + targetAnnual, 1/12) - 1;
+
+    const equityNoSale = equity.slice();
+    equityNoSale[months] -= salePrice; // remove current sale to isolate "other" flows (independent of sale)
+    // Note: equityNoSale now represents cashflows excluding terminal sale inflow.
+
+    let pvOther = 0;
+    for (let t=0; t<=months; t++){
+      pvOther += equityNoSale[t] / Math.pow(1 + rTargetMo, t);
+    }
+    const targetSaleFor30IRR = -pvOther * Math.pow(1 + rTargetMo, months);
+    const targetSaleValid = isFinite(targetSaleFor30IRR) && targetSaleFor30IRR >= 0;
 
     return {
       invoice, salePrice, advancePct, saleMonth: months, procFee,
       unitFeePctMo, unitBase, capRepPct, capBase,
       addCurtPct, addCurtMonth,
-      advanceAmt, unitFeeMonthly,
+      advanceAmt,
       totalUnitFees, totalFees,
       absReturnDollar, absReturnPct,
       loanIrrMo, loanApr,
-      equityIrr, moic,
-      equityNeg: neg,
-      lines: { lineAdvance, lineProcFee, lineUnitFee, lineCapRep, lineAddCurt, lineFinalPay, netLoan, principalBal }
+      equityIrr,
+      equityOut,
+      breakEvenSale,
+      targetSaleFor30IRR: targetSaleValid ? targetSaleFor30IRR : NaN,
+      lines: { lineAdvance, lineProcFee, lineUnitFee, lineCapRep, lineAddCurt, lineFinalPay, netLoan, principalBalEnd }
     };
   }
 
-  /* -----------------------------
-     Render KPIs
-  ------------------------------*/
   function renderKpis(m){
     document.getElementById("kpiInvoice").textContent = gbp(m.invoice);
     document.getElementById("kpiAdvance").textContent = gbp(m.advanceAmt);
@@ -886,17 +920,27 @@
 
     document.getElementById("kpiLoanIrrMo").textContent = isFinite(m.loanIrrMo) ? pct(m.loanIrrMo, 3) : "—";
     document.getElementById("kpiLoanApr").textContent   = isFinite(m.loanApr)   ? pct(m.loanApr, 2)   : "—";
+    document.getElementById("kpiTotalIntFees").textContent = `Total Int. and Fees: ${gbp(m.totalFees)}`;
 
     const absStr = `${gbp(m.absReturnDollar)}  |  ${isFinite(m.absReturnPct) ? pct(m.absReturnPct, 2) : "—"}`;
     document.getElementById("kpiAbsReturn").textContent = absStr;
 
-    const roeStr = `${isFinite(m.moic) ? m.moic.toFixed(2) + "x" : "—"}  |  ${isFinite(m.equityIrr) ? pct(m.equityIrr, 2) : "—"}`;
-    document.getElementById("kpiRoe").textContent = roeStr;
+    const roeStr = `${isFinite(m.equityIrr) ? pct(m.equityIrr, 2) : "—"}`;
+    // Keep the tile structure you had: "MOIC | IRR" was earlier, but you requested IRR conceptually.
+    // We'll preserve existing display format by showing MOIC-like and IRR if desired; here we keep prior:
+    // MOIC is derivable, but you didn't ask to change it now. We'll keep "— | IRR" if you prefer;
+    // Instead, compute a quick MOIC from equityOut for continuity:
+    const moic = (m.equityOut > 0) ? (m.salePrice / m.equityOut) : NaN;
+    document.getElementById("kpiRoe").textContent = `${isFinite(moic) ? moic.toFixed(2) + "x" : "—"}  |  ${roeStr}`;
+
+    // Narrative line (break-even + 30% equity IRR)
+    const be = gbp(m.breakEvenSale);
+    const y = isFinite(m.targetSaleFor30IRR) ? gbp(m.targetSaleFor30IRR) : "—";
+    document.getElementById("kpiNarrative").innerHTML =
+      `We purchased the vehicle at <strong>${gbp(m.invoice)}</strong> and need to sell it at <strong>${be}</strong> in order to break even (including interest and fees). ` +
+      `We need to sell it at <strong>${y}</strong> to realize a <strong>30% return on the equity (IRR)</strong>.`;
   }
 
-  /* -----------------------------
-     Render table
-  ------------------------------*/
   function renderTable(m){
     const months = m.saleMonth;
     const cols = ["M0"];
@@ -931,7 +975,7 @@
       return t;
     }
 
-    const unitBaseLabel = (m.unitBase === "advance") ? "Advance" : "Invoice";
+    const unitBaseLabel = (m.unitBase === "advance") ? "Prior month ending principal" : "Invoice";
     const capBaseLabel  = (m.capBase === "outstanding") ? "Outstanding" : "Invoice";
 
     const head = `<table>
@@ -952,30 +996,28 @@
       + rowHtml("Capital", "cap", `Additional curtailment @ M${m.addCurtMonth} (${(m.addCurtPct*100).toFixed(2)}% of ${capBaseLabel})`, m.lines.lineAddCurt)
       + rowHtml("Capital", "cap", `Final payoff @ M${months}`, m.lines.lineFinalPay)
       + rowHtml("—", "net", "Net cashflow (loan IRR input)", m.lines.netLoan, {isNet:true})
-      + rowHtml("—", "cap", "Outstanding principal balance (end of month)", m.lines.principalBal, {isBalance:true});
+      + rowHtml("—", "cap", "Outstanding principal balance (end of month)", m.lines.principalBalEnd, {isBalance:true});
 
     const foot = `</tbody></table>`;
     document.getElementById("tableWrap").innerHTML = head + body + foot;
 
     const below = `
       <div><strong>Sale price assumed at M${months}:</strong> ${gbp(m.salePrice)}</div>
-      <div style="margin-top:6px;"><strong>Total fees:</strong> ${gbp(m.totalFees)} (Processing: ${gbp(m.procFee)}, Unit fees: ${gbp(m.totalUnitFees)})</div>
+      <div style="margin-top:6px;"><strong>Total Int. and Fees:</strong> ${gbp(m.totalFees)} (Processing: ${gbp(m.procFee)}, Unit fees: ${gbp(m.totalUnitFees)})</div>
       <div style="margin-top:6px;"><strong>Absolute return:</strong> ${gbp(m.absReturnDollar)} (${isFinite(m.absReturnPct) ? pct(m.absReturnPct, 2) : "—"})</div>
-      <div style="margin-top:6px;"><strong>ROE:</strong> ${isFinite(m.moic) ? m.moic.toFixed(2) + "x MOIC" : "—"} | ${isFinite(m.equityIrr) ? pct(m.equityIrr, 2) + " equity IRR" : "—"}</div>
     `;
     document.getElementById("belowBlock").innerHTML = below;
   }
 
   /* -----------------------------
-     Tooltip content builder
+     Tooltip content (unchanged per your request for APR)
   ------------------------------*/
   function setTooltipContent(kind, m){
     const titleEl = document.getElementById("ttTitle");
     const descEl = document.getElementById("ttDesc");
     const formulaEl = document.getElementById("ttFormula");
     const numbersEl = document.getElementById("ttNumbers");
-
-    if (!m){ return; }
+    if (!m) return;
 
     if (kind === "loanMo"){
       titleEl.textContent = "Monthly Rate (Loan IRR)";
@@ -1008,42 +1050,40 @@ APR = (1 + ${isFinite(m.loanIrrMo) ? m.loanIrrMo.toFixed(6) : "—"})^12 − 1
       numbersEl.textContent =
 `SalePrice = ${gbp(m.salePrice)}
 Invoice   = ${gbp(m.invoice)}
-Fees      = ${gbp(m.totalFees)}  (Proc ${gbp(m.procFee)} + Unit ${gbp(m.totalUnitFees)})
+Fees      = ${gbp(m.totalFees)}
 
-£ Return  = ${gbp(m.salePrice)} − ${gbp(m.invoice)} − ${gbp(m.totalFees)} = ${gbp(m.absReturnDollar)}
-% Return  = (${gbp(m.salePrice)} − ${gbp(m.totalFees)}) / ${gbp(m.invoice)} − 1 = ${isFinite(m.absReturnPct) ? pct(m.absReturnPct, 2) : "—"}`;
+£ Return  = ${gbp(m.absReturnDollar)}
+% Return  = ${isFinite(m.absReturnPct) ? pct(m.absReturnPct, 2) : "—"}`;
     }
 
     if (kind === "roe"){
       titleEl.textContent = "Return on Equity";
-      descEl.textContent = "MOIC and levered equity IRR on the equity portion, treating fees and curtailments as equity cash out and sale proceeds as equity cash in.";
+      descEl.textContent = "Levered equity IRR is computed on equity cashflows; MOIC shown for convenience.";
       formulaEl.textContent =
-`MOIC = Total Equity Inflows / Total Equity Outflows
+`MOIC = SalePrice / Total Equity Outflows
 Equity IRR = IRR( equity cashflow series )`;
+      const moic = (m.equityOut > 0) ? (m.salePrice / m.equityOut) : NaN;
       numbersEl.textContent =
-`Equity Outflows (total) = ${gbp(m.equityNeg)}
-Equity Inflows (sale)   = ${gbp(m.salePrice)}
+`Equity Outflows (total) = ${gbp(m.equityOut)}
+SalePrice (inflow)      = ${gbp(m.salePrice)}
 
-MOIC = ${gbp(m.salePrice)} / ${gbp(m.equityNeg)} = ${isFinite(m.moic) ? m.moic.toFixed(2) + "x" : "—"}
+MOIC = ${isFinite(moic) ? moic.toFixed(2) + "x" : "—"}
 Equity IRR (annual) = ${isFinite(m.equityIrr) ? pct(m.equityIrr, 2) : "—"}`;
     }
   }
 
   function positionTooltip(anchorEl){
     const tt = document.getElementById("tooltip");
-    const wrap = document.querySelector(".hero");
     const a = anchorEl.getBoundingClientRect();
-    const w = wrap.getBoundingClientRect();
+    // measure after content is set + shown
     const t = tt.getBoundingClientRect();
 
-    // Prefer above if not enough room below
     const spaceBelow = window.innerHeight - a.bottom;
     const showAbove = spaceBelow < 220;
 
     let top = (showAbove ? (a.top - t.height - 10) : (a.bottom + 10));
     let left = a.left;
 
-    // Clamp within viewport
     const pad = 12;
     left = Math.min(left, window.innerWidth - t.width - pad);
     left = Math.max(left, pad);
@@ -1051,7 +1091,6 @@ Equity IRR (annual) = ${isFinite(m.equityIrr) ? pct(m.equityIrr, 2) : "—"}`;
     top = Math.max(top, pad);
     top = Math.min(top, window.innerHeight - t.height - pad);
 
-    // Convert to document coordinates
     tt.style.left = (left + window.scrollX) + "px";
     tt.style.top  = (top + window.scrollY) + "px";
   }
@@ -1064,30 +1103,25 @@ Equity IRR (annual) = ${isFinite(m.equityIrr) ? pct(m.equityIrr, 2) : "—"}`;
     setTooltipContent(kind, lastModel);
     tt.classList.add("show");
     tt.setAttribute("aria-hidden", "false");
+    // position after showing so size is known
     positionTooltip(anchorEl);
   }
-
   function hideTooltip(){
     const tt = document.getElementById("tooltip");
     activeTooltipKey = null;
     tt.classList.remove("show");
     tt.setAttribute("aria-hidden", "true");
   }
-
   function attachTooltipHandlers(tileId, kind){
     const el = document.getElementById(tileId);
 
-    // Hover (desktop)
     el.addEventListener("mouseenter", ()=> showTooltipFor(el, kind));
     el.addEventListener("mouseleave", ()=> hideTooltip());
 
-    // Keyboard focus
     el.addEventListener("focus", ()=> showTooltipFor(el, kind));
     el.addEventListener("blur", ()=> hideTooltip());
 
-    // Tap/click toggles (mobile + desktop)
     el.addEventListener("click", (e)=>{
-      // Allow click to toggle
       const tt = document.getElementById("tooltip");
       const isOpen = tt.classList.contains("show") && activeTooltipKey === kind;
       if (isOpen) hideTooltip();
@@ -1095,23 +1129,15 @@ Equity IRR (annual) = ${isFinite(m.equityIrr) ? pct(m.equityIrr, 2) : "—"}`;
       e.stopPropagation();
     });
   }
-
-  // Close tooltip on click elsewhere / scroll / resize
   document.addEventListener("click", ()=> hideTooltip());
   window.addEventListener("scroll", ()=> { if (activeTooltipKey) hideTooltip(); }, {passive:true});
   window.addEventListener("resize", ()=> { if (activeTooltipKey) hideTooltip(); });
 
-  /* -----------------------------
-     Init ticks on slider
-  ------------------------------*/
   function initAdvanceTicks(){
     const ticks = document.getElementById("advanceTicks");
     ticks.innerHTML = ADV_STEPS.map(x => `<span>${x}</span>`).join("");
   }
 
-  /* -----------------------------
-     Recalc
-  ------------------------------*/
   function recalc(){
     populateCurtailmentMonthDropdown();
     updateAdvanceLabels();
@@ -1122,6 +1148,7 @@ Equity IRR (annual) = ${isFinite(m.equityIrr) ? pct(m.equityIrr, 2) : "—"}`;
 
     const model = buildModel();
     lastModel = model;
+
     renderKpis(model);
     renderTable(model);
 
@@ -1141,9 +1168,6 @@ Equity IRR (annual) = ${isFinite(m.equityIrr) ? pct(m.equityIrr, 2) : "—"}`;
     }
   }
 
-  /* -----------------------------
-     Reset defaults
-  ------------------------------*/
   function resetDefaults(){
     salePriceTouched = false;
 
@@ -1171,52 +1195,43 @@ Equity IRR (annual) = ${isFinite(m.equityIrr) ? pct(m.equityIrr, 2) : "—"}`;
     recalc();
   }
 
-  /* -----------------------------
-     Wire up events
-  ------------------------------*/
+  // Wire up events
   document.getElementById("recalc").addEventListener("click", recalc);
   document.getElementById("reset").addEventListener("click", resetDefaults);
 
-  // Comma formatting on blur
   attachCommaFormatting("invoice");
   attachCommaFormatting("salePrice");
   attachCommaFormatting("procFee");
 
-  // Invoice changes -> update sale price unless user touched it
   document.getElementById("invoice").addEventListener("input", ()=>{
     maybeUpdateSalePriceFromInvoice();
     recalc();
   });
-
-  // Sale price manual edits -> freeze auto-update
   document.getElementById("salePrice").addEventListener("input", ()=>{
     salePriceTouched = true;
     recalc();
   });
 
-  // Advance slider
   document.getElementById("advanceSlider").addEventListener("input", ()=>{
     updateAdvanceLabels();
     updateUnitFeeFromScheduleIfEnabled();
     recalc();
   });
 
-  // Use schedule toggle
   document.getElementById("useSchedule").addEventListener("change", ()=>{
     updateUnitFeeFromScheduleIfEnabled();
     recalc();
   });
 
-  // Unit fee manual edits
   document.getElementById("unitFeePct").addEventListener("input", ()=> recalc());
 
-  // Other inputs
   ["saleMonth","capRepPct","addCurtPct","addCurtMonth"].forEach(id=>{
     document.getElementById(id).addEventListener("input", ()=>{
       if (id === "saleMonth") populateCurtailmentMonthDropdown();
       recalc();
     });
   });
+
   document.querySelectorAll('input[name="unitBase"]').forEach(el=>el.addEventListener("change", recalc));
   document.querySelectorAll('input[name="capBase"]').forEach(el=>el.addEventListener("change", recalc));
 
@@ -1226,9 +1241,7 @@ Equity IRR (annual) = ${isFinite(m.equityIrr) ? pct(m.equityIrr, 2) : "—"}`;
   attachTooltipHandlers("kpiTileAbs", "abs");
   attachTooltipHandlers("kpiTileRoe", "roe");
 
-  /* -----------------------------
-     Init
-  ------------------------------*/
+  // init
   initAdvanceTicks();
   populateCurtailmentMonthDropdown();
   setAdvanceSliderToPct(80);
