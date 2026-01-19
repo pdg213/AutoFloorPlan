@@ -7,15 +7,10 @@
   <style>
     :root{
       --bg:#0b1220;
-      --panel:#101a2e;
-      --panel2:#0f172a;
       --text:#e5e7eb;
       --muted:#9ca3af;
       --border:#26344f;
       --accent:#60a5fa;
-      --good:#34d399;
-      --warn:#fbbf24;
-      --bad:#f87171;
       --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
       --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
     }
@@ -40,6 +35,7 @@
       background: linear-gradient(180deg, rgba(96,165,250,0.18), rgba(0,0,0,0.18));
       box-shadow: 0 16px 34px rgba(0,0,0,0.28);
       margin-bottom: 14px;
+      position: relative;
     }
     .heroTop{
       display:flex;
@@ -78,6 +74,16 @@
       border-radius: 14px;
       padding: 10px 10px 9px;
       min-height: 62px;
+      position: relative;
+    }
+    .kpi[role="button"]{
+      cursor: help;
+      user-select:none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .kpi:focus-visible{
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(96,165,250,0.22);
     }
     .kpi .name{
       color: var(--muted);
@@ -90,6 +96,67 @@
       color: #eaf2ff;
       line-height: 1.2;
       white-space: pre-wrap;
+    }
+    .pill{
+      display:inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      font-size: 11px;
+      color: #c7d2fe;
+      background: rgba(0,0,0,0.18);
+      font-family: var(--mono);
+      margin-left: 6px;
+    }
+
+    /* Tooltip */
+    .tooltip{
+      position: absolute;
+      z-index: 9999;
+      width: min(420px, calc(100vw - 40px));
+      background: linear-gradient(180deg, rgba(15,23,42,0.98), rgba(11,20,40,0.98));
+      border: 1px solid rgba(96,165,250,0.35);
+      border-radius: 14px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.55);
+      padding: 10px 12px;
+      display: none;
+      pointer-events: none; /* hover doesn't fight mouse */
+      transform: translateY(6px);
+      backdrop-filter: blur(6px);
+    }
+    .tooltip.show{
+      display:block;
+    }
+    .tooltip .tTitle{
+      font-weight: 800;
+      color: #eaf2ff;
+      font-size: 12.5px;
+      margin: 0 0 6px 0;
+    }
+    .tooltip .tDesc{
+      margin: 0 0 8px 0;
+      color: #cbd5e1;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .tooltip .tBlock{
+      border-top: 1px solid rgba(38,52,79,0.8);
+      margin-top: 8px;
+      padding-top: 8px;
+      font-family: var(--mono);
+      font-size: 11.5px;
+      color: #dbeafe;
+      line-height: 1.35;
+      white-space: pre-wrap;
+    }
+    .tooltip .tLabel{
+      color: #93a4c1;
+      font-family: var(--sans);
+      font-size: 11px;
+      margin-bottom: 4px;
+    }
+    .tooltip .tFormula, .tooltip .tNumbers{
+      color: #dbeafe;
     }
 
     /* Inputs bar */
@@ -229,6 +296,14 @@
       font-family: var(--mono);
       opacity: 0.9;
     }
+    .inlineNote{
+      margin-top: 6px;
+      color: #93a4c1;
+      font-size: 11px;
+      line-height: 1.25;
+      font-family: var(--mono);
+      opacity: 0.95;
+    }
 
     /* Table card */
     .tableCard{
@@ -323,25 +398,6 @@
       color: #eaf2ff;
       font-weight: 800;
     }
-    .pill{
-      display:inline-block;
-      padding: 2px 8px;
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      font-size: 11px;
-      color: #c7d2fe;
-      background: rgba(0,0,0,0.18);
-      font-family: var(--mono);
-      margin-left: 6px;
-    }
-    .inlineNote{
-      margin-top: 6px;
-      color: #93a4c1;
-      font-size: 11px;
-      line-height: 1.25;
-      font-family: var(--mono);
-      opacity: 0.95;
-    }
   </style>
 </head>
 <body>
@@ -355,6 +411,7 @@
           Loan IRR/APR excludes sale proceeds. Equity MOIC/IRR uses sale price and treats fees + curtailments as equity cash out.
         </p>
       </div>
+
       <div class="kpiGrid">
         <div class="kpi">
           <div class="name">Purchase Price (Invoice)</div>
@@ -368,21 +425,39 @@
           <div class="name">Sale Price</div>
           <div class="val" id="kpiSalePrice">—</div>
         </div>
-        <div class="kpi">
+
+        <!-- Tooltip KPIs -->
+        <div class="kpi" id="kpiTileLoanMo" role="button" tabindex="0" aria-label="Monthly Rate details">
           <div class="name">Monthly Rate (Loan IRR)</div>
           <div class="val" id="kpiLoanIrrMo">—</div>
         </div>
-        <div class="kpi">
+        <div class="kpi" id="kpiTileLoanApr" role="button" tabindex="0" aria-label="APR details">
           <div class="name">APR (Loan)</div>
           <div class="val" id="kpiLoanApr">—</div>
         </div>
-        <div class="kpi">
+        <div class="kpi" id="kpiTileAbs" role="button" tabindex="0" aria-label="Absolute Return details">
           <div class="name">Absolute Return</div>
           <div class="val" id="kpiAbsReturn">—</div>
         </div>
-        <div class="kpi">
+        <div class="kpi" id="kpiTileRoe" role="button" tabindex="0" aria-label="Return on Equity details">
           <div class="name">Return on Equity</div>
           <div class="val" id="kpiRoe">—</div>
+        </div>
+      </div>
+
+      <!-- shared tooltip element -->
+      <div class="tooltip" id="tooltip" aria-hidden="true">
+        <div class="tTitle" id="ttTitle">—</div>
+        <div class="tDesc" id="ttDesc">—</div>
+
+        <div class="tBlock">
+          <div class="tLabel">Formula</div>
+          <div class="tFormula" id="ttFormula">—</div>
+        </div>
+
+        <div class="tBlock">
+          <div class="tLabel">With numbers</div>
+          <div class="tNumbers" id="ttNumbers">—</div>
         </div>
       </div>
     </div>
@@ -398,18 +473,15 @@
       </div>
 
       <div class="inputsRow">
-        <!-- Invoice -->
         <div class="field">
           <div class="label">
             <span>Invoice Value (Purchase Price)</span>
             <span class="small">£</span>
           </div>
-          <!-- text input so we can show commas -->
           <input id="invoice" type="text" inputmode="numeric" value="1,000,000" />
           <div class="inlineNote">Commas shown on blur.</div>
         </div>
 
-        <!-- Sale Price -->
         <div class="field">
           <div class="label">
             <span>Sale Price</span>
@@ -419,7 +491,6 @@
           <div class="inlineNote">Auto-updates with invoice until overridden.</div>
         </div>
 
-        <!-- Advance slider -->
         <div class="field">
           <div class="label">
             <span>Advance Rate (slider)</span>
@@ -433,7 +504,6 @@
           <div class="inlineNote">Steps: 40,45,50,55,60,65,70,75,80.</div>
         </div>
 
-        <!-- Sale Month -->
         <div class="field">
           <div class="label">
             <span>Sale Month</span>
@@ -442,7 +512,6 @@
           <input id="saleMonth" type="number" min="1" step="1" value="12" />
         </div>
 
-        <!-- Processing Fee -->
         <div class="field">
           <div class="label">
             <span>Processing Fee (M0)</span>
@@ -452,7 +521,6 @@
           <div class="inlineNote">Included in fees.</div>
         </div>
 
-        <!-- Unit fee: schedule + override -->
         <div class="field">
           <div class="label">
             <span>Monthly Unit Fee</span>
@@ -475,7 +543,6 @@
           </div>
         </div>
 
-        <!-- Capital repayment -->
         <div class="field">
           <div class="label">
             <span>Capital Repayment @ M6 (Day 180)</span>
@@ -488,7 +555,6 @@
           </div>
         </div>
 
-        <!-- Additional curtailment -->
         <div class="field">
           <div class="label">
             <span>Additional Curtailment (Optional)</span>
@@ -517,7 +583,6 @@
         </p>
       </div>
       <div class="tableWrap" id="tableWrap"></div>
-
       <div class="below" id="belowBlock"></div>
     </div>
 
@@ -528,22 +593,13 @@
      Schedule + slider mapping
   ------------------------------*/
   const ADV_STEPS = [40, 45, 50, 55, 60, 65, 70, 75, 80];
-  const UNIT_FEE_BY_ADV = {
-    80: 0.63,
-    75: 0.59,
-    70: 0.55,
-    65: 0.51,
-    60: 0.47,
-    55: 0.43,
-    50: 0.39,
-    45: 0.35,
-    40: 0.31
-  };
+  const UNIT_FEE_BY_ADV = {80:0.63,75:0.59,70:0.55,65:0.51,60:0.47,55:0.43,50:0.39,45:0.35,40:0.31};
 
   /* -----------------------------
      State
   ------------------------------*/
   let salePriceTouched = false;
+  let lastModel = null; // keep latest model for tooltip numbers
 
   /* -----------------------------
      Utilities
@@ -686,11 +742,7 @@
     const el = document.getElementById(id);
     el.addEventListener("blur", ()=>{
       const v = parseNumberFromText(el.value);
-      // show commas on blur
       el.value = formatIntWithCommas(v);
-    });
-    el.addEventListener("focus", ()=>{
-      // on focus, keep commas (user can still edit); we don't strip to avoid surprises
     });
   }
 
@@ -710,7 +762,7 @@
     const unitBase = getRadio("unitBase"); // invoice|advance
 
     const capRepPct = Math.max(0, Number(document.getElementById("capRepPct").value) || 0) / 100;
-    const capBase = getRadio("capBase"); // invoice|outstanding (shared with additional)
+    const capBase = getRadio("capBase"); // invoice|outstanding
 
     const addCurtPct = Math.max(0, Number(document.getElementById("addCurtPct").value) || 0) / 100;
     const addCurtMonth = clampInt(document.getElementById("addCurtMonth").value, 1, 120);
@@ -723,7 +775,6 @@
 
     const zeros = () => Array(months+1).fill(0);
 
-    // Loan cashflow lines (borrower view)
     const lineAdvance   = zeros();
     const lineProcFee   = zeros();
     const lineUnitFee   = zeros();
@@ -731,23 +782,16 @@
     const lineAddCurt   = zeros();
     const lineFinalPay  = zeros();
     const netLoan       = zeros();
-
-    // Principal balance (end-of-month)
     const principalBal  = Array(months+1).fill(0);
 
-    // Loan: M0
     lineAdvance[0] = advanceAmt;
     lineProcFee[0] = -procFee;
 
-    // Loan: fees M1..M_sale
     for (let m=1; m<=months; m++){
       lineUnitFee[m] = -unitFeeMonthly;
     }
 
-    // Build principal schedule with events in chronological order
     let principal = advanceAmt;
-
-    // event list (month, kind, pct)
     const events = [];
     if (months >= 6 && capRepPct > 0) events.push({m: 6, kind: "cap", pct: capRepPct});
     if (addCurtPct > 0 && addCurtMonth <= months) events.push({m: addCurtMonth, kind: "add", pct: addCurtPct});
@@ -759,10 +803,8 @@
       return principal * pct;
     }
 
-    // Month-by-month walk to record principal balance end-of-month
     let eIdx = 0;
     for (let m=0; m<=months; m++){
-      // apply any events that happen at this month (principal paydowns)
       while (eIdx < events.length && events[eIdx].m === m){
         const e = events[eIdx];
         const amt = Math.min(principal, curtailAmt(e.pct));
@@ -773,17 +815,13 @@
         }
         eIdx++;
       }
-
-      // final payoff happens at sale month after any scheduled curtailments that same month
       if (m === months){
         lineFinalPay[m] = -principal;
         principal = 0;
       }
-
-      principalBal[m] = principal; // end-of-month after events and (at sale month) after payoff => 0
+      principalBal[m] = principal;
     }
 
-    // Net loan cashflow (for loan IRR)
     for (let m=0; m<=months; m++){
       netLoan[m] =
         lineAdvance[m] +
@@ -797,17 +835,13 @@
     const loanIrrMo = irrMonthly(netLoan);
     const loanApr = isFinite(loanIrrMo) ? (Math.pow(1+loanIrrMo, 12) - 1) : NaN;
 
-    // Fees summary (for absolute return + equity flows)
     const totalUnitFees = unitFeeMonthly * months;
     const totalFees = procFee + totalUnitFees;
 
-    // Absolute return definition (per your instruction)
     const absReturnDollar = salePrice - invoice - totalFees;
     const absReturnPct = (invoice > 0) ? ((salePrice - totalFees)/invoice - 1) : NaN;
 
-    // Equity cashflows (Option A): M0 = -(invoice - advance + procFee)
-    // Monthly unit fees and any principal paydowns are equity outflows.
-    // Sale month inflow = +salePrice
+    // Equity cashflows (short definition for tooltip)
     const equity = Array(months+1).fill(0);
     equity[0] = -(invoice - advanceAmt) - procFee;
     for (let m=1; m<=months; m++){
@@ -821,7 +855,6 @@
     const equityIrrMo = irrMonthly(equity);
     const equityIrr = isFinite(equityIrrMo) ? (Math.pow(1+equityIrrMo, 12) - 1) : NaN;
 
-    // MOIC = total positive / absolute(total negative)
     let pos=0, neg=0;
     for (const x of equity){
       if (x > 0) pos += x;
@@ -838,6 +871,7 @@
       absReturnDollar, absReturnPct,
       loanIrrMo, loanApr,
       equityIrr, moic,
+      equityNeg: neg,
       lines: { lineAdvance, lineProcFee, lineUnitFee, lineCapRep, lineAddCurt, lineFinalPay, netLoan, principalBal }
     };
   }
@@ -891,7 +925,6 @@
             text = gbp(v);
           }
         }
-
         t += `<td class="${cls}">${text}</td>`;
       }
       t += `</tr>`;
@@ -922,24 +955,158 @@
       + rowHtml("—", "cap", "Outstanding principal balance (end of month)", m.lines.principalBal, {isBalance:true});
 
     const foot = `</tbody></table>`;
-
     document.getElementById("tableWrap").innerHTML = head + body + foot;
 
     const below = `
-      <div>
-        <strong>Sale price assumed at M${months}:</strong> ${gbp(m.salePrice)}
-      </div>
-      <div style="margin-top:6px;">
-        <strong>Total fees:</strong> ${gbp(m.totalFees)} (Processing: ${gbp(m.procFee)}, Unit fees: ${gbp(m.totalUnitFees)})
-      </div>
-      <div style="margin-top:6px;">
-        <strong>Absolute return:</strong> ${gbp(m.absReturnDollar)} (${isFinite(m.absReturnPct) ? pct(m.absReturnPct, 2) : "—"})
-      </div>
-      <div style="margin-top:6px;">
-        <strong>ROE:</strong> ${isFinite(m.moic) ? m.moic.toFixed(2) + "x MOIC" : "—"} | ${isFinite(m.equityIrr) ? pct(m.equityIrr, 2) + " equity IRR" : "—"}
-      </div>
+      <div><strong>Sale price assumed at M${months}:</strong> ${gbp(m.salePrice)}</div>
+      <div style="margin-top:6px;"><strong>Total fees:</strong> ${gbp(m.totalFees)} (Processing: ${gbp(m.procFee)}, Unit fees: ${gbp(m.totalUnitFees)})</div>
+      <div style="margin-top:6px;"><strong>Absolute return:</strong> ${gbp(m.absReturnDollar)} (${isFinite(m.absReturnPct) ? pct(m.absReturnPct, 2) : "—"})</div>
+      <div style="margin-top:6px;"><strong>ROE:</strong> ${isFinite(m.moic) ? m.moic.toFixed(2) + "x MOIC" : "—"} | ${isFinite(m.equityIrr) ? pct(m.equityIrr, 2) + " equity IRR" : "—"}</div>
     `;
     document.getElementById("belowBlock").innerHTML = below;
+  }
+
+  /* -----------------------------
+     Tooltip content builder
+  ------------------------------*/
+  function setTooltipContent(kind, m){
+    const titleEl = document.getElementById("ttTitle");
+    const descEl = document.getElementById("ttDesc");
+    const formulaEl = document.getElementById("ttFormula");
+    const numbersEl = document.getElementById("ttNumbers");
+
+    if (!m){ return; }
+
+    if (kind === "loanMo"){
+      titleEl.textContent = "Monthly Rate (Loan IRR)";
+      descEl.textContent = "Monthly cost of the loan to the borrower, computed as the IRR of the loan cashflows (excluding sale proceeds).";
+      formulaEl.textContent =
+`IRR_monthly = IRR( [NetLoanCF_M0, NetLoanCF_M1, …, NetLoanCF_MN] )`;
+      numbersEl.textContent =
+`NetLoanCF series length: ${m.saleMonth + 1} months
+M0 (net): ${gbp(m.lines.netLoan[0])}
+M${m.saleMonth} (net): ${gbp(m.lines.netLoan[m.saleMonth])}
+Result: ${isFinite(m.loanIrrMo) ? pct(m.loanIrrMo, 3) : "—"}`;
+    }
+
+    if (kind === "loanApr"){
+      titleEl.textContent = "APR (Loan)";
+      descEl.textContent = "Annualized rate derived from the monthly loan IRR, compounding monthly.";
+      formulaEl.textContent = `APR = (1 + IRR_monthly)^12 − 1`;
+      numbersEl.textContent =
+`IRR_monthly = ${isFinite(m.loanIrrMo) ? pct(m.loanIrrMo, 3) : "—"}
+APR = (1 + ${isFinite(m.loanIrrMo) ? m.loanIrrMo.toFixed(6) : "—"})^12 − 1
+= ${isFinite(m.loanApr) ? pct(m.loanApr, 2) : "—"}`;
+    }
+
+    if (kind === "abs"){
+      titleEl.textContent = "Absolute Return";
+      descEl.textContent = "Profit on the unit after fees, shown in £ and as a % of invoice per your definition.";
+      formulaEl.textContent =
+`£ Return = SalePrice − Invoice − Fees
+% Return = (SalePrice − Fees) / Invoice − 1`;
+      numbersEl.textContent =
+`SalePrice = ${gbp(m.salePrice)}
+Invoice   = ${gbp(m.invoice)}
+Fees      = ${gbp(m.totalFees)}  (Proc ${gbp(m.procFee)} + Unit ${gbp(m.totalUnitFees)})
+
+£ Return  = ${gbp(m.salePrice)} − ${gbp(m.invoice)} − ${gbp(m.totalFees)} = ${gbp(m.absReturnDollar)}
+% Return  = (${gbp(m.salePrice)} − ${gbp(m.totalFees)}) / ${gbp(m.invoice)} − 1 = ${isFinite(m.absReturnPct) ? pct(m.absReturnPct, 2) : "—"}`;
+    }
+
+    if (kind === "roe"){
+      titleEl.textContent = "Return on Equity";
+      descEl.textContent = "MOIC and levered equity IRR on the equity portion, treating fees and curtailments as equity cash out and sale proceeds as equity cash in.";
+      formulaEl.textContent =
+`MOIC = Total Equity Inflows / Total Equity Outflows
+Equity IRR = IRR( equity cashflow series )`;
+      numbersEl.textContent =
+`Equity Outflows (total) = ${gbp(m.equityNeg)}
+Equity Inflows (sale)   = ${gbp(m.salePrice)}
+
+MOIC = ${gbp(m.salePrice)} / ${gbp(m.equityNeg)} = ${isFinite(m.moic) ? m.moic.toFixed(2) + "x" : "—"}
+Equity IRR (annual) = ${isFinite(m.equityIrr) ? pct(m.equityIrr, 2) : "—"}`;
+    }
+  }
+
+  function positionTooltip(anchorEl){
+    const tt = document.getElementById("tooltip");
+    const wrap = document.querySelector(".hero");
+    const a = anchorEl.getBoundingClientRect();
+    const w = wrap.getBoundingClientRect();
+    const t = tt.getBoundingClientRect();
+
+    // Prefer above if not enough room below
+    const spaceBelow = window.innerHeight - a.bottom;
+    const showAbove = spaceBelow < 220;
+
+    let top = (showAbove ? (a.top - t.height - 10) : (a.bottom + 10));
+    let left = a.left;
+
+    // Clamp within viewport
+    const pad = 12;
+    left = Math.min(left, window.innerWidth - t.width - pad);
+    left = Math.max(left, pad);
+
+    top = Math.max(top, pad);
+    top = Math.min(top, window.innerHeight - t.height - pad);
+
+    // Convert to document coordinates
+    tt.style.left = (left + window.scrollX) + "px";
+    tt.style.top  = (top + window.scrollY) + "px";
+  }
+
+  let activeTooltipKey = null;
+
+  function showTooltipFor(anchorEl, kind){
+    const tt = document.getElementById("tooltip");
+    activeTooltipKey = kind;
+    setTooltipContent(kind, lastModel);
+    tt.classList.add("show");
+    tt.setAttribute("aria-hidden", "false");
+    positionTooltip(anchorEl);
+  }
+
+  function hideTooltip(){
+    const tt = document.getElementById("tooltip");
+    activeTooltipKey = null;
+    tt.classList.remove("show");
+    tt.setAttribute("aria-hidden", "true");
+  }
+
+  function attachTooltipHandlers(tileId, kind){
+    const el = document.getElementById(tileId);
+
+    // Hover (desktop)
+    el.addEventListener("mouseenter", ()=> showTooltipFor(el, kind));
+    el.addEventListener("mouseleave", ()=> hideTooltip());
+
+    // Keyboard focus
+    el.addEventListener("focus", ()=> showTooltipFor(el, kind));
+    el.addEventListener("blur", ()=> hideTooltip());
+
+    // Tap/click toggles (mobile + desktop)
+    el.addEventListener("click", (e)=>{
+      // Allow click to toggle
+      const tt = document.getElementById("tooltip");
+      const isOpen = tt.classList.contains("show") && activeTooltipKey === kind;
+      if (isOpen) hideTooltip();
+      else showTooltipFor(el, kind);
+      e.stopPropagation();
+    });
+  }
+
+  // Close tooltip on click elsewhere / scroll / resize
+  document.addEventListener("click", ()=> hideTooltip());
+  window.addEventListener("scroll", ()=> { if (activeTooltipKey) hideTooltip(); }, {passive:true});
+  window.addEventListener("resize", ()=> { if (activeTooltipKey) hideTooltip(); });
+
+  /* -----------------------------
+     Init ticks on slider
+  ------------------------------*/
+  function initAdvanceTicks(){
+    const ticks = document.getElementById("advanceTicks");
+    ticks.innerHTML = ADV_STEPS.map(x => `<span>${x}</span>`).join("");
   }
 
   /* -----------------------------
@@ -954,8 +1121,24 @@
     document.getElementById("addCurtBaseLabel").textContent = (capBase === "outstanding") ? "Outstanding" : "Invoice";
 
     const model = buildModel();
+    lastModel = model;
     renderKpis(model);
     renderTable(model);
+
+    // If tooltip is open, refresh its numbers
+    if (activeTooltipKey){
+      const map = {
+        loanMo: document.getElementById("kpiTileLoanMo"),
+        loanApr: document.getElementById("kpiTileLoanApr"),
+        abs: document.getElementById("kpiTileAbs"),
+        roe: document.getElementById("kpiTileRoe")
+      };
+      const anchor = map[activeTooltipKey];
+      if (anchor){
+        setTooltipContent(activeTooltipKey, lastModel);
+        positionTooltip(anchor);
+      }
+    }
   }
 
   /* -----------------------------
@@ -989,14 +1172,6 @@
   }
 
   /* -----------------------------
-     Init ticks on slider
-  ------------------------------*/
-  function initAdvanceTicks(){
-    const ticks = document.getElementById("advanceTicks");
-    ticks.innerHTML = ADV_STEPS.map(x => `<span>${x}</span>`).join("");
-  }
-
-  /* -----------------------------
      Wire up events
   ------------------------------*/
   document.getElementById("recalc").addEventListener("click", recalc);
@@ -1007,7 +1182,7 @@
   attachCommaFormatting("salePrice");
   attachCommaFormatting("procFee");
 
-  // Invoice changes -> update sale price unless user touched it (recalc on input)
+  // Invoice changes -> update sale price unless user touched it
   document.getElementById("invoice").addEventListener("input", ()=>{
     maybeUpdateSalePriceFromInvoice();
     recalc();
@@ -1032,10 +1207,8 @@
     recalc();
   });
 
-  // Unit fee manual edits only matter when override is enabled
-  document.getElementById("unitFeePct").addEventListener("input", ()=>{
-    recalc();
-  });
+  // Unit fee manual edits
+  document.getElementById("unitFeePct").addEventListener("input", ()=> recalc());
 
   // Other inputs
   ["saleMonth","capRepPct","addCurtPct","addCurtMonth"].forEach(id=>{
@@ -1047,7 +1220,15 @@
   document.querySelectorAll('input[name="unitBase"]').forEach(el=>el.addEventListener("change", recalc));
   document.querySelectorAll('input[name="capBase"]').forEach(el=>el.addEventListener("change", recalc));
 
-  // init
+  // Tooltip handlers for selected KPI tiles
+  attachTooltipHandlers("kpiTileLoanMo", "loanMo");
+  attachTooltipHandlers("kpiTileLoanApr", "loanApr");
+  attachTooltipHandlers("kpiTileAbs", "abs");
+  attachTooltipHandlers("kpiTileRoe", "roe");
+
+  /* -----------------------------
+     Init
+  ------------------------------*/
   initAdvanceTicks();
   populateCurtailmentMonthDropdown();
   setAdvanceSliderToPct(80);
