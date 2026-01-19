@@ -426,7 +426,7 @@
       <div class="heroTop">
         <h1>Single Car Model <span class="pill">Loan APR vs Equity Returns</span></h1>
         <p class="sub">
-          Loan IRR/APR excludes sale proceeds. Equity IRR uses sale price and treats fees + curtailments as equity cash out.
+          Loan IRR/APR excludes sale proceeds. Equity IRR uses sale price and treats fees + principal paydowns as equity cash out.
         </p>
       </div>
 
@@ -563,7 +563,7 @@
 
           <div class="inlineNote" id="scheduleNote">
             Schedule: 80→0.63, 75→0.59, 70→0.55, 65→0.51, 60→0.47, 55→0.43, 50→0.39, 45→0.35, 40→0.31
-            <br>*If charging on Advance, fee is computed on prior month ending principal (so it steps down after paydowns, starting M7).
+            <br>*If charging on Advance, fee is computed on prior month ending principal (paydown at M6 reduces fee starting M7).
           </div>
         </div>
 
@@ -773,20 +773,20 @@
     // Loan cashflow lines (borrower view)
     const lineAdvance   = zeros();
     const lineProcFee   = zeros();
-    const lineUnitFee   = zeros();   // now can vary by month
+    const lineUnitFee   = zeros();   // can vary by month
     const lineCapRep    = zeros();
     const lineAddCurt   = zeros();
     const lineFinalPay  = zeros();
     const netLoan       = zeros();
 
-    // Principal balance end-of-month after principal payments (and payoff at sale month)
+    // Principal balance end-of-month after principal payments
     const principalBalEnd = Array(months+1).fill(0);
 
     // Loan: M0
     lineAdvance[0] = advanceAmt;
     lineProcFee[0] = -procFee;
 
-    // Build principal schedule (independent of unit fees)
+    // Build principal schedule
     let principal = advanceAmt;
     const events = [];
     if (months >= 6 && capRepPct > 0) events.push({m: 6, kind: "cap", pct: capRepPct});
@@ -801,7 +801,6 @@
 
     let eIdx = 0;
     for (let m=0; m<=months; m++){
-      // apply any principal events at this month
       while (eIdx < events.length && events[eIdx].m === m){
         const e = events[eIdx];
         const amt = Math.min(principal, curtailAmt(e.pct));
@@ -812,24 +811,21 @@
         }
         eIdx++;
       }
-
-      // final payoff at sale month after any scheduled curtailments that same month
       if (m === months){
         lineFinalPay[m] = -principal;
         principal = 0;
       }
-
       principalBalEnd[m] = principal;
     }
 
-    // Unit fee schedule:
-    // - If base is Invoice: constant on invoice each month.
-    // - If base is Advance: charge based on prior month ENDING principal (so paydown at M6 reduces fee starting M7).
+    // Unit fee:
+    // - Invoice base: invoice * rate each month
+    // - Advance base: prior month ending principal * rate (paydown at M6 reduces fee starting M7)
     for (let m=1; m<=months; m++){
       if (unitBase === "invoice"){
         lineUnitFee[m] = -(invoice * unitFeePctMo);
       } else {
-        const baseAmt = principalBalEnd[m-1]; // prior month ending principal
+        const baseAmt = principalBalEnd[m-1];
         lineUnitFee[m] = -(baseAmt * unitFeePctMo);
       }
     }
@@ -848,54 +844,52 @@
     const loanIrrMo = irrMonthly(netLoan);
     const loanApr = isFinite(loanIrrMo) ? (Math.pow(1+loanIrrMo, 12) - 1) : NaN;
 
-    // Total fees (interest + fees): processing + sum of unit fees
+    // Total interest + fees: processing + sum of unit fees
     let totalUnitFees = 0;
     for (let m=1; m<=months; m++) totalUnitFees += -lineUnitFee[m];
     const totalFees = procFee + totalUnitFees;
 
-    // Absolute return (per your definitions)
+    // Absolute return (profit net of financing costs)
     const absReturnDollar = salePrice - invoice - totalFees;
     const absReturnPct = (invoice > 0) ? ((salePrice - totalFees)/invoice - 1) : NaN;
 
-    // Equity cashflows (borrower/operator):
-    // M0: -(invoice - advance) - proc fee
-    // M1..MN: unit fees + any curtailments + final payoff
-    // MN: + sale price
+    // Equity cashflows (for equity IRR):
     const equity = Array(months+1).fill(0);
     equity[0] = -(invoice - advanceAmt) - procFee;
     for (let m=1; m<=months; m++){
-      equity[m] += lineUnitFee[m];   // negative
-      equity[m] += lineCapRep[m];    // negative if any
-      equity[m] += lineAddCurt[m];   // negative if any
-      equity[m] += lineFinalPay[m];  // negative (repay remaining)
+      equity[m] += lineUnitFee[m];
+      equity[m] += lineCapRep[m];
+      equity[m] += lineAddCurt[m];
+      equity[m] += lineFinalPay[m];
     }
     equity[months] += salePrice;
 
     const equityIrrMo = irrMonthly(equity);
     const equityIrr = isFinite(equityIrrMo) ? (Math.pow(1+equityIrrMo, 12) - 1) : NaN;
 
-    // Total equity outflows (for break-even sale price)
+    // MOIC (net equity proceeds / total equity outflows)
     let equityOut = 0;
-    for (const x of equity){
-      if (x < 0) equityOut += -x;
-    }
-    const breakEvenSale = equityOut; // MOIC = 1x, single terminal inflow assumption
+    for (const x of equity) if (x < 0) equityOut += -x;
+    const moic = (equityOut > 0) ? (salePrice / equityOut) : NaN;
 
-    // Target sale for 30% equity IRR (annual), keep it short and deterministic:
-    // Solve NPV=0 at r_target_month for sale price S (only in last month).
+    // Break-even sale price per your definition:
+    // "sell for X => exactly £0 profit net of financing fees/interest"
+    const breakEvenSale = invoice + totalFees;
+    const breakEvenMoic = (equityOut > 0) ? (breakEvenSale / equityOut) : NaN;
+
+    // Target sale for 30% equity IRR (annual)
     const targetAnnual = 0.30;
     const rTargetMo = Math.pow(1 + targetAnnual, 1/12) - 1;
 
+    // Remove terminal sale from equity to solve for required terminal sale at target IRR
     const equityNoSale = equity.slice();
-    equityNoSale[months] -= salePrice; // remove current sale to isolate "other" flows (independent of sale)
-    // Note: equityNoSale now represents cashflows excluding terminal sale inflow.
+    equityNoSale[months] -= salePrice;
 
     let pvOther = 0;
     for (let t=0; t<=months; t++){
       pvOther += equityNoSale[t] / Math.pow(1 + rTargetMo, t);
     }
     const targetSaleFor30IRR = -pvOther * Math.pow(1 + rTargetMo, months);
-    const targetSaleValid = isFinite(targetSaleFor30IRR) && targetSaleFor30IRR >= 0;
 
     return {
       invoice, salePrice, advancePct, saleMonth: months, procFee,
@@ -905,10 +899,10 @@
       totalUnitFees, totalFees,
       absReturnDollar, absReturnPct,
       loanIrrMo, loanApr,
-      equityIrr,
+      equityIrr, moic,
       equityOut,
-      breakEvenSale,
-      targetSaleFor30IRR: targetSaleValid ? targetSaleFor30IRR : NaN,
+      breakEvenSale, breakEvenMoic,
+      targetSaleFor30IRR,
       lines: { lineAdvance, lineProcFee, lineUnitFee, lineCapRep, lineAddCurt, lineFinalPay, netLoan, principalBalEnd }
     };
   }
@@ -925,19 +919,17 @@
     const absStr = `${gbp(m.absReturnDollar)}  |  ${isFinite(m.absReturnPct) ? pct(m.absReturnPct, 2) : "—"}`;
     document.getElementById("kpiAbsReturn").textContent = absStr;
 
-    const roeStr = `${isFinite(m.equityIrr) ? pct(m.equityIrr, 2) : "—"}`;
-    // Keep the tile structure you had: "MOIC | IRR" was earlier, but you requested IRR conceptually.
-    // We'll preserve existing display format by showing MOIC-like and IRR if desired; here we keep prior:
-    // MOIC is derivable, but you didn't ask to change it now. We'll keep "— | IRR" if you prefer;
-    // Instead, compute a quick MOIC from equityOut for continuity:
-    const moic = (m.equityOut > 0) ? (m.salePrice / m.equityOut) : NaN;
-    document.getElementById("kpiRoe").textContent = `${isFinite(moic) ? moic.toFixed(2) + "x" : "—"}  |  ${roeStr}`;
+    document.getElementById("kpiRoe").textContent =
+      `${isFinite(m.moic) ? m.moic.toFixed(2) + "x" : "—"}  |  ${isFinite(m.equityIrr) ? pct(m.equityIrr, 2) : "—"}`;
 
-    // Narrative line (break-even + 30% equity IRR)
+    // Narrative: break-even profit + 30% equity IRR
     const be = gbp(m.breakEvenSale);
-    const y = isFinite(m.targetSaleFor30IRR) ? gbp(m.targetSaleFor30IRR) : "—";
+    const beMoicTxt = isFinite(m.breakEvenMoic) ? `${m.breakEvenMoic.toFixed(2)}x` : "—";
+    const y = (isFinite(m.targetSaleFor30IRR) && m.targetSaleFor30IRR >= 0) ? gbp(m.targetSaleFor30IRR) : "—";
+
     document.getElementById("kpiNarrative").innerHTML =
-      `We purchased the vehicle at <strong>${gbp(m.invoice)}</strong> and need to sell it at <strong>${be}</strong> in order to break even (including interest and fees). ` +
+      `We purchased the vehicle at <strong>${gbp(m.invoice)}</strong> and need to sell it at <strong>${be}</strong> in order to make exactly <strong>£0</strong> net of financing fees/interest ` +
+      `(≈ <strong>${beMoicTxt} MOIC</strong>). ` +
       `We need to sell it at <strong>${y}</strong> to realize a <strong>30% return on the equity (IRR)</strong>.`;
   }
 
@@ -1004,14 +996,12 @@
     const below = `
       <div><strong>Sale price assumed at M${months}:</strong> ${gbp(m.salePrice)}</div>
       <div style="margin-top:6px;"><strong>Total Int. and Fees:</strong> ${gbp(m.totalFees)} (Processing: ${gbp(m.procFee)}, Unit fees: ${gbp(m.totalUnitFees)})</div>
-      <div style="margin-top:6px;"><strong>Absolute return:</strong> ${gbp(m.absReturnDollar)} (${isFinite(m.absReturnPct) ? pct(m.absReturnPct, 2) : "—"})</div>
+      <div style="margin-top:6px;"><strong>Profit net of financing:</strong> ${gbp(m.absReturnDollar)} (${isFinite(m.absReturnPct) ? pct(m.absReturnPct, 2) : "—"})</div>
     `;
     document.getElementById("belowBlock").innerHTML = below;
   }
 
-  /* -----------------------------
-     Tooltip content (unchanged per your request for APR)
-  ------------------------------*/
+  /* Tooltip content (unchanged) */
   function setTooltipContent(kind, m){
     const titleEl = document.getElementById("ttTitle");
     const descEl = document.getElementById("ttDesc");
@@ -1062,12 +1052,11 @@ Fees      = ${gbp(m.totalFees)}
       formulaEl.textContent =
 `MOIC = SalePrice / Total Equity Outflows
 Equity IRR = IRR( equity cashflow series )`;
-      const moic = (m.equityOut > 0) ? (m.salePrice / m.equityOut) : NaN;
       numbersEl.textContent =
-`Equity Outflows (total) = ${gbp(m.equityOut)}
-SalePrice (inflow)      = ${gbp(m.salePrice)}
+`Total equity outflows = ${gbp(m.equityOut)}
+SalePrice              = ${gbp(m.salePrice)}
 
-MOIC = ${isFinite(moic) ? moic.toFixed(2) + "x" : "—"}
+MOIC = ${isFinite(m.moic) ? m.moic.toFixed(2) + "x" : "—"}
 Equity IRR (annual) = ${isFinite(m.equityIrr) ? pct(m.equityIrr, 2) : "—"}`;
     }
   }
@@ -1075,7 +1064,6 @@ Equity IRR (annual) = ${isFinite(m.equityIrr) ? pct(m.equityIrr, 2) : "—"}`;
   function positionTooltip(anchorEl){
     const tt = document.getElementById("tooltip");
     const a = anchorEl.getBoundingClientRect();
-    // measure after content is set + shown
     const t = tt.getBoundingClientRect();
 
     const spaceBelow = window.innerHeight - a.bottom;
@@ -1103,7 +1091,6 @@ Equity IRR (annual) = ${isFinite(m.equityIrr) ? pct(m.equityIrr, 2) : "—"}`;
     setTooltipContent(kind, lastModel);
     tt.classList.add("show");
     tt.setAttribute("aria-hidden", "false");
-    // position after showing so size is known
     positionTooltip(anchorEl);
   }
   function hideTooltip(){
@@ -1152,7 +1139,6 @@ Equity IRR (annual) = ${isFinite(m.equityIrr) ? pct(m.equityIrr, 2) : "—"}`;
     renderKpis(model);
     renderTable(model);
 
-    // If tooltip is open, refresh its numbers
     if (activeTooltipKey){
       const map = {
         loanMo: document.getElementById("kpiTileLoanMo"),
@@ -1235,7 +1221,7 @@ Equity IRR (annual) = ${isFinite(m.equityIrr) ? pct(m.equityIrr, 2) : "—"}`;
   document.querySelectorAll('input[name="unitBase"]').forEach(el=>el.addEventListener("change", recalc));
   document.querySelectorAll('input[name="capBase"]').forEach(el=>el.addEventListener("change", recalc));
 
-  // Tooltip handlers for selected KPI tiles
+  // Tooltip handlers
   attachTooltipHandlers("kpiTileLoanMo", "loanMo");
   attachTooltipHandlers("kpiTileLoanApr", "loanApr");
   attachTooltipHandlers("kpiTileAbs", "abs");
