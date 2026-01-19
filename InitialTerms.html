@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Single Car Stocking Model (Cashflows + IRR)</title>
+  <title>Single Car Model — Loan APR + Equity Returns</title>
   <style>
     :root{
       --bg:#0b1220;
@@ -27,57 +27,137 @@
       color: var(--text);
     }
     .wrap{
-      max-width: 1200px;
-      margin: 28px auto;
-      padding: 0 18px 36px;
+      max-width: 1400px;
+      margin: 22px auto;
+      padding: 0 16px 36px;
     }
-    h1{
-      font-size: 20px;
-      font-weight: 650;
-      margin: 0 0 8px;
+
+    /* Top KPI box */
+    .hero{
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 16px 16px 14px;
+      background: linear-gradient(180deg, rgba(96,165,250,0.18), rgba(0,0,0,0.18));
+      box-shadow: 0 16px 34px rgba(0,0,0,0.28);
+      margin-bottom: 14px;
+    }
+    .heroTop{
+      display:flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .hero h1{
+      margin:0;
+      font-size: 18px;
+      font-weight: 750;
       letter-spacing: 0.2px;
     }
-    .sub{
+    .hero .sub{
+      margin:0;
       color: var(--muted);
-      font-size: 13px;
-      margin: 0 0 18px;
+      font-size: 12.5px;
       line-height: 1.35;
     }
-    .grid{
+    .kpiGrid{
       display:grid;
-      grid-template-columns: 1.2fr 1fr;
-      gap:14px;
-      align-items: start;
+      grid-template-columns: repeat(7, minmax(150px, 1fr));
+      gap: 10px;
     }
-    @media (max-width: 980px){
-      .grid{ grid-template-columns: 1fr; }
+    @media (max-width: 1200px){
+      .kpiGrid{ grid-template-columns: repeat(3, minmax(160px, 1fr)); }
     }
-    .card{
-      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
-      border: 1px solid var(--border);
+    @media (max-width: 720px){
+      .kpiGrid{ grid-template-columns: repeat(2, minmax(160px, 1fr)); }
+    }
+    .kpi{
+      background: rgba(0,0,0,0.18);
+      border: 1px solid rgba(38,52,79,0.9);
       border-radius: 14px;
-      padding: 14px 14px 12px;
-      box-shadow: 0 12px 28px rgba(0,0,0,0.25);
+      padding: 10px 10px 9px;
+      min-height: 62px;
     }
-    .card h2{
+    .kpi .name{
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+    .kpi .val{
+      font-family: var(--mono);
       font-size: 14px;
-      margin: 0 0 10px;
-      font-weight: 650;
+      color: #eaf2ff;
+      line-height: 1.2;
+    }
+    .kpi .val small{
+      font-family: var(--mono);
+      color: #b6c2d6;
+      font-size: 12px;
+    }
+
+    /* Inputs bar */
+    .inputsCard{
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 14px 14px 12px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+      box-shadow: 0 12px 28px rgba(0,0,0,0.25);
+      margin-bottom: 14px;
+    }
+    .inputsHeader{
+      display:flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .inputsHeader h2{
+      margin:0;
+      font-size: 13.5px;
+      font-weight: 750;
       color: #eaf2ff;
     }
-    .form{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
+    .actions{
+      display:flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items:center;
     }
-    @media (max-width: 640px){
-      .form{ grid-template-columns: 1fr; }
+    button{
+      appearance:none;
+      border: 1px solid #355085;
+      background: linear-gradient(180deg, rgba(96,165,250,0.28), rgba(96,165,250,0.12));
+      color: #eaf2ff;
+      padding: 8px 11px;
+      border-radius: 12px;
+      cursor:pointer;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+      font-size: 12.5px;
+    }
+    button:hover{ filter: brightness(1.05); }
+    button.secondary{
+      background: rgba(0,0,0,0.16);
+      border-color: var(--border);
+      color: var(--text);
+      font-weight: 650;
+    }
+
+    .inputsRow{
+      display:flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: stretch;
     }
     .field{
+      flex: 1 1 220px;
+      min-width: 220px;
       background: rgba(0,0,0,0.18);
       border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 10px 10px 8px;
+      border-radius: 14px;
+      padding: 10px 10px 9px;
     }
     .label{
       display:flex;
@@ -96,29 +176,24 @@
     input[type="number"], select{
       width:100%;
       box-sizing:border-box;
-      border-radius: 10px;
+      border-radius: 12px;
       border: 1px solid #314369;
       background: #0b1428;
       color: var(--text);
       padding: 9px 10px;
-      font-size: 14px;
+      font-size: 13.5px;
       outline:none;
     }
     input[type="number"]:focus, select:focus{
       border-color: var(--accent);
       box-shadow: 0 0 0 3px rgba(96,165,250,0.18);
     }
-    .row{
-      display:flex;
-      gap: 10px;
-      align-items: center;
-      margin-top: 8px;
-    }
     .toggle{
       display:flex;
-      gap: 8px;
+      gap: 10px;
       align-items:center;
       flex-wrap: wrap;
+      margin-top: 8px;
     }
     .toggle label{
       display:flex;
@@ -129,62 +204,36 @@
       user-select:none;
     }
     .toggle input{ accent-color: var(--accent); }
-    .actions{
-      margin-top: 12px;
+
+    /* Table card */
+    .tableCard{
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 14px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+      box-shadow: 0 12px 28px rgba(0,0,0,0.25);
+    }
+    .tableHeader{
       display:flex;
-      gap: 10px;
+      justify-content: space-between;
+      align-items: baseline;
       flex-wrap: wrap;
-      align-items:center;
+      gap: 10px;
+      margin-bottom: 10px;
     }
-    button{
-      appearance:none;
-      border: 1px solid #355085;
-      background: linear-gradient(180deg, rgba(96,165,250,0.28), rgba(96,165,250,0.12));
+    .tableHeader h2{
+      margin:0;
+      font-size: 13.5px;
+      font-weight: 750;
       color: #eaf2ff;
-      padding: 9px 12px;
-      border-radius: 12px;
-      cursor:pointer;
-      font-weight: 650;
-      letter-spacing: 0.2px;
     }
-    button:hover{ filter: brightness(1.05); }
-    button.secondary{
-      background: rgba(0,0,0,0.16);
-      border-color: var(--border);
-      color: var(--text);
-      font-weight: 600;
-    }
-    .note{
+    .tableHeader .hint{
+      margin:0;
       color: var(--muted);
       font-size: 12px;
       line-height: 1.35;
-      margin-top: 10px;
     }
-    .kpis{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-top: 10px;
-    }
-    @media (max-width: 640px){
-      .kpis{ grid-template-columns: 1fr; }
-    }
-    .kpi{
-      background: rgba(0,0,0,0.18);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 10px 10px 9px;
-    }
-    .kpi .name{
-      color: var(--muted);
-      font-size: 12px;
-      margin-bottom: 6px;
-    }
-    .kpi .val{
-      font-family: var(--mono);
-      font-size: 14px;
-      color: #eaf2ff;
-    }
+
     .tableWrap{
       overflow:auto;
       border-radius: 14px;
@@ -194,7 +243,7 @@
     table{
       width:100%;
       border-collapse: collapse;
-      min-width: 900px;
+      min-width: 980px;
       font-size: 12px;
     }
     th, td{
@@ -208,7 +257,7 @@
       top: 0;
       background: #0b1428;
       z-index: 1;
-      font-weight: 700;
+      font-weight: 800;
       color: #eaf2ff;
       border-bottom: 1px solid #334766;
     }
@@ -226,24 +275,30 @@
       background: #0b1428;
       z-index: 2;
     }
-    /* widths for sticky columns */
     th.left, td.left{ min-width: 120px; max-width: 120px; }
-    th.left2, td.left2{ min-width: 240px; max-width: 240px; }
+    th.left2, td.left2{ min-width: 290px; max-width: 290px; }
 
     tr:last-child td{ border-bottom: none; }
+
     .muted{ color: var(--muted); }
     .cap{ color: #dbeafe; }
     .fee{ color: #fde68a; }
-    .net{ color: #eaf2ff; font-weight: 700; }
+    .net{ color: #eaf2ff; font-weight: 800; }
     .neg{ color: #fecaca; }
     .pos{ color: #bbf7d0; }
-    .smallPrint{
+    .bal{ color: #c7d2fe; font-weight: 700; }
+
+    .below{
       margin-top: 10px;
       color: var(--muted);
-      font-size: 12px;
+      font-size: 12.5px;
       line-height: 1.45;
     }
-    .badge{
+    .below strong{
+      color: #eaf2ff;
+      font-weight: 800;
+    }
+    .pill{
       display:inline-block;
       padding: 2px 8px;
       border-radius: 999px;
@@ -258,478 +313,585 @@
 </head>
 <body>
   <div class="wrap">
-    <h1>Single Car Stocking Model <span class="badge">cashflows + IRR</span></h1>
-    <p class="sub">
-      Simple, single-unit model: advance at M0, monthly fees at month-end, optional curtailments, and full payoff at sale month.
-      Cashflows are borrower perspective (inflows positive, outflows negative).
-    </p>
 
-    <div class="grid">
-      <div class="card">
-        <h2>Inputs</h2>
-
-        <div class="form">
-          <div class="field">
-            <div class="label">
-              <span>Invoice Value (GBP)</span>
-              <span class="small">£</span>
-            </div>
-            <input id="invoice" type="number" min="0" step="1000" value="1000000" />
-          </div>
-
-          <div class="field">
-            <div class="label">
-              <span>Advance %</span>
-              <span class="small">%</span>
-            </div>
-            <input id="advancePct" type="number" min="0" max="100" step="0.1" value="80" />
-          </div>
-
-          <div class="field">
-            <div class="label">
-              <span>Sale Month (M1…MN)</span>
-              <span class="small">months</span>
-            </div>
-            <input id="saleMonth" type="number" min="1" step="1" value="12" />
-          </div>
-
-          <div class="field">
-            <div class="label">
-              <span>Processing Fee (M0)</span>
-              <span class="small">£</span>
-            </div>
-            <input id="procFee" type="number" min="0" step="10" value="250" />
-          </div>
-
-          <div class="field">
-            <div class="label">
-              <span>Unit Fee % per Month</span>
-              <span class="small">%/mo</span>
-            </div>
-            <input id="unitFeePct" type="number" min="0" step="0.01" value="0.65" />
-            <div class="row">
-              <div class="toggle" aria-label="Unit fee base">
-                <label><input type="radio" name="unitBase" value="invoice" checked /> charge on Invoice</label>
-                <label><input type="radio" name="unitBase" value="advance" /> charge on Advance</label>
-              </div>
-            </div>
-          </div>
-
-          <div class="field">
-            <div class="label">
-              <span>Capital Repayment at M6 (Day 180)</span>
-              <span class="small">% + base</span>
-            </div>
-            <input id="capRepPct" type="number" min="0" step="0.1" value="10" />
-            <div class="row">
-              <div class="toggle" aria-label="Capital repayment base">
-                <label><input type="radio" name="capBase" value="invoice" checked /> % of Invoice</label>
-                <label><input type="radio" name="capBase" value="outstanding" /> % of Outstanding</label>
-              </div>
-            </div>
-          </div>
-
-          <div class="field">
-            <div class="label">
-              <span>Additional Curtailment (Optional)</span>
-              <span class="small">% + month</span>
-            </div>
-            <input id="addCurtPct" type="number" min="0" step="0.1" value="0" />
-            <div class="row">
-              <select id="addCurtMonth" aria-label="Additional curtailment month">
-                <!-- populated dynamically -->
-              </select>
-            </div>
-            <div class="note">Base matches “Capital Repayment base” toggle.</div>
-          </div>
+    <!-- KPI / summary box -->
+    <div class="hero">
+      <div class="heroTop">
+        <h1>Single Car Model <span class="pill">Loan APR vs Equity Returns</span></h1>
+        <p class="sub">
+          Loan IRR/APR excludes sale proceeds. Equity MOIC/IRR uses sale price and treats fees + curtailments as equity cash out.
+        </p>
+      </div>
+      <div class="kpiGrid">
+        <div class="kpi">
+          <div class="name">Purchase Price (Invoice)</div>
+          <div class="val" id="kpiInvoice">—</div>
         </div>
+        <div class="kpi">
+          <div class="name">Advance Amount</div>
+          <div class="val" id="kpiAdvance">—</div>
+        </div>
+        <div class="kpi">
+          <div class="name">Sale Price</div>
+          <div class="val" id="kpiSalePrice">—</div>
+        </div>
+        <div class="kpi">
+          <div class="name">Monthly Rate (Loan IRR)</div>
+          <div class="val" id="kpiLoanIrrMo">—</div>
+        </div>
+        <div class="kpi">
+          <div class="name">APR (Loan)</div>
+          <div class="val" id="kpiLoanApr">—</div>
+        </div>
+        <div class="kpi">
+          <div class="name">Absolute Return</div>
+          <div class="val" id="kpiAbsReturn">—</div>
+        </div>
+        <div class="kpi">
+          <div class="name">Return on Equity</div>
+          <div class="val" id="kpiRoe">—</div>
+        </div>
+      </div>
+    </div>
 
+    <!-- Inputs -->
+    <div class="inputsCard">
+      <div class="inputsHeader">
+        <h2>Inputs</h2>
         <div class="actions">
           <button id="recalc">Recalculate</button>
           <button class="secondary" id="reset">Reset defaults</button>
         </div>
+      </div>
 
-        <div class="kpis" style="margin-top:14px;">
-          <div class="kpi">
-            <div class="name">Advance Amount (M0)</div>
-            <div class="val" id="kpiAdvance">—</div>
+      <div class="inputsRow">
+        <div class="field">
+          <div class="label">
+            <span>Invoice Value (Purchase Price)</span>
+            <span class="small">£</span>
           </div>
-          <div class="kpi">
-            <div class="name">Monthly Unit Fee</div>
-            <div class="val" id="kpiUnitFee">—</div>
+          <input id="invoice" type="number" min="0" step="1000" value="1000000" />
+        </div>
+
+        <div class="field">
+          <div class="label">
+            <span>Sale Price</span>
+            <span class="small">£ (defaults +10%)</span>
           </div>
-          <div class="kpi">
-            <div class="name">Monthly IRR</div>
-            <div class="val" id="kpiIrrMo">—</div>
+          <input id="salePrice" type="number" min="0" step="1000" value="1100000" />
+        </div>
+
+        <div class="field">
+          <div class="label">
+            <span>Advance %</span>
+            <span class="small">%</span>
           </div>
-          <div class="kpi">
-            <div class="name">Annualized APR</div>
-            <div class="val" id="kpiApr">—</div>
+          <input id="advancePct" type="number" min="0" max="100" step="0.1" value="80" />
+        </div>
+
+        <div class="field">
+          <div class="label">
+            <span>Sale Month</span>
+            <span class="small">M1…MN</span>
+          </div>
+          <input id="saleMonth" type="number" min="1" step="1" value="12" />
+        </div>
+
+        <div class="field">
+          <div class="label">
+            <span>Processing Fee (M0)</span>
+            <span class="small">£</span>
+          </div>
+          <input id="procFee" type="number" min="0" step="10" value="250" />
+          <div class="label" style="margin-top:8px;">
+            <span class="muted">Included in fees</span>
+            <span class="small">yes</span>
           </div>
         </div>
 
-        <p class="smallPrint">
-          Notes:
-          <br/>• Unit fee is paid at end of each month (M1…M_sale).
-          <br/>• Capital repayment at M6 occurs only if sale month ≥ 6.
-          <br/>• Additional curtailment occurs in the selected month only if it is ≤ sale month.
-          <br/>• Final payoff at sale month clears remaining principal.
-        </p>
-      </div>
+        <div class="field">
+          <div class="label">
+            <span>Unit Fee % per Month</span>
+            <span class="small">%/mo</span>
+          </div>
+          <input id="unitFeePct" type="number" min="0" step="0.01" value="0.65" />
+          <div class="toggle" aria-label="Unit fee base">
+            <label><input type="radio" name="unitBase" value="invoice" checked /> charge on Invoice</label>
+            <label><input type="radio" name="unitBase" value="advance" /> charge on Advance</label>
+          </div>
+        </div>
 
-      <div class="card">
-        <h2>Cashflow Table</h2>
-        <div class="tableWrap" id="tableWrap"></div>
-        <p class="smallPrint">
-          “Type” indicates whether the line is a <span class="fee">Fee</span> or <span class="cap">Capital</span> repayment/advance.
-          Net row is the sum of all lines per month, used for IRR.
-        </p>
+        <div class="field">
+          <div class="label">
+            <span>Capital Repayment @ M6 (Day 180)</span>
+            <span class="small">% + base</span>
+          </div>
+          <input id="capRepPct" type="number" min="0" step="0.1" value="10" />
+          <div class="toggle" aria-label="Capital repayment base">
+            <label><input type="radio" name="capBase" value="invoice" checked /> % of Invoice</label>
+            <label><input type="radio" name="capBase" value="outstanding" /> % of Outstanding</label>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="label">
+            <span>Additional Curtailment (Optional)</span>
+            <span class="small">% + month</span>
+          </div>
+          <input id="addCurtPct" type="number" min="0" step="0.1" value="0" />
+          <div style="margin-top:8px;">
+            <select id="addCurtMonth" aria-label="Additional curtailment month"></select>
+          </div>
+          <div class="label" style="margin-top:8px;">
+            <span class="muted">Base matches Capital Repayment</span>
+            <span class="small" id="addCurtBaseLabel">Invoice</span>
+          </div>
+        </div>
+
       </div>
     </div>
+
+    <!-- Table -->
+    <div class="tableCard">
+      <div class="tableHeader">
+        <h2>Loan Cashflows (for Loan IRR/APR)</h2>
+        <p class="hint">
+          Borrower perspective. Sale price is not included in loan APR.
+          Principal balance shown end-of-month after principal payments.
+        </p>
+      </div>
+      <div class="tableWrap" id="tableWrap"></div>
+
+      <div class="below" id="belowBlock">
+        <!-- populated dynamically -->
+      </div>
+    </div>
+
   </div>
 
 <script>
-/* -----------------------------
-   Utilities: formatting
-------------------------------*/
-function gbp(x){
-  const sign = x < 0 ? "-" : "";
-  const v = Math.abs(x);
-  return sign + "£" + v.toLocaleString(undefined, {maximumFractionDigits: 2, minimumFractionDigits: 0});
-}
-function pct(x, decimals=2){
-  if (!isFinite(x)) return "—";
-  return (x*100).toFixed(decimals) + "%";
-}
-function clampInt(v, min, max){
-  v = Math.round(Number(v));
-  if (!isFinite(v)) v = min;
-  return Math.max(min, Math.min(max, v));
-}
-function getRadio(name){
-  const el = document.querySelector(`input[name="${name}"]:checked`);
-  return el ? el.value : null;
-}
+  /* -----------------------------
+     State
+  ------------------------------*/
+  let salePriceTouched = false;
 
-/* -----------------------------
-   IRR: monthly IRR via bisection
-   Borrower cashflows: array of length N+1 for M0..MN
-------------------------------*/
-function npv(rate, cfs){
-  let s = 0;
-  for (let t=0; t<cfs.length; t++){
-    s += cfs[t] / Math.pow(1+rate, t);
+  /* -----------------------------
+     Utilities
+  ------------------------------*/
+  function gbp(x){
+    const sign = x < 0 ? "-" : "";
+    const v = Math.abs(x);
+    return sign + "£" + v.toLocaleString(undefined, {maximumFractionDigits: 2, minimumFractionDigits: 0});
   }
-  return s;
-}
-function irrMonthly(cfs){
-  // Need at least one + and one - cashflow for IRR to exist
-  let hasPos=false, hasNeg=false;
-  for (const x of cfs){
-    if (x > 0) hasPos = true;
-    if (x < 0) hasNeg = true;
+  function pct(x, decimals=2){
+    if (!isFinite(x)) return "—";
+    return (x*100).toFixed(decimals) + "%";
   }
-  if (!(hasPos && hasNeg)) return NaN;
-
-  // Bracket search
-  let lo = -0.9999;
-  let hi = 5.0; // 500%/mo cap
-  let fLo = npv(lo, cfs);
-  let fHi = npv(hi, cfs);
-
-  // Expand hi until sign changes or cap reached
-  let iter=0;
-  while (fLo*fHi > 0 && hi < 100 && iter < 50){
-    hi *= 2;
-    fHi = npv(hi, cfs);
-    iter++;
+  function clampInt(v, min, max){
+    v = Math.round(Number(v));
+    if (!isFinite(v)) v = min;
+    return Math.max(min, Math.min(max, v));
   }
-  if (fLo*fHi > 0) return NaN;
+  function getRadio(name){
+    const el = document.querySelector(`input[name="${name}"]:checked`);
+    return el ? el.value : null;
+  }
 
-  // Bisection
-  for (let i=0; i<120; i++){
-    const mid = (lo+hi)/2;
-    const fMid = npv(mid, cfs);
-    if (Math.abs(fMid) < 1e-8) return mid;
-    if (fLo*fMid <= 0){
-      hi = mid;
-      fHi = fMid;
-    }else{
-      lo = mid;
-      fLo = fMid;
+  /* -----------------------------
+     IRR: monthly via bisection
+  ------------------------------*/
+  function npv(rate, cfs){
+    let s = 0;
+    for (let t=0; t<cfs.length; t++){
+      s += cfs[t] / Math.pow(1+rate, t);
     }
+    return s;
   }
-  return (lo+hi)/2;
-}
-
-/* -----------------------------
-   Model builder
-------------------------------*/
-function buildModel(){
-  const invoice = Math.max(0, Number(document.getElementById("invoice").value) || 0);
-  const advancePct = Math.max(0, Number(document.getElementById("advancePct").value) || 0) / 100;
-  const saleMonth = clampInt(document.getElementById("saleMonth").value, 1, 120);
-
-  const procFee = Math.max(0, Number(document.getElementById("procFee").value) || 0);
-
-  const unitFeePctMo = Math.max(0, Number(document.getElementById("unitFeePct").value) || 0) / 100;
-  const unitBase = getRadio("unitBase"); // invoice or advance
-
-  const capRepPct = Math.max(0, Number(document.getElementById("capRepPct").value) || 0) / 100;
-  const capBase = getRadio("capBase"); // invoice or outstanding (and shared with add curtailment)
-
-  const addCurtPct = Math.max(0, Number(document.getElementById("addCurtPct").value) || 0) / 100;
-  const addCurtMonth = clampInt(document.getElementById("addCurtMonth").value, 1, 120);
-
-  const months = saleMonth;
-
-  const advanceAmt = invoice * advancePct;
-
-  // Monthly unit fee base
-  const unitFeeBaseAmt = (unitBase === "advance") ? advanceAmt : invoice;
-  const unitFeeMonthly = unitFeeBaseAmt * unitFeePctMo;
-
-  // Initialize lines (arrays length months+1)
-  const zeros = () => Array(months+1).fill(0);
-
-  const lineAdvance = zeros();
-  const lineProcFee = zeros();
-  const lineUnitFee = zeros();
-  const lineCapRep = zeros();
-  const lineAddCurt = zeros();
-  const lineFinalPay = zeros();
-
-  // M0
-  lineAdvance[0] = advanceAmt;     // capital inflow
-  lineProcFee[0] = -procFee;       // fee outflow
-
-  // Monthly unit fee: M1..M_sale (month-end)
-  for (let m=1; m<=months; m++){
-    lineUnitFee[m] = -unitFeeMonthly;
-  }
-
-  // Track principal balance
-  let principal = advanceAmt;
-
-  // Helper: compute a curtailment payment amount based on selected base
-  function computeCurtailAmt(pct){
-    if (pct <= 0) return 0;
-    if (capBase === "invoice"){
-      return invoice * pct;
-    }else{
-      return principal * pct;
+  function irrMonthly(cfs){
+    let hasPos=false, hasNeg=false;
+    for (const x of cfs){
+      if (x > 0) hasPos = true;
+      if (x < 0) hasNeg = true;
     }
-  }
+    if (!(hasPos && hasNeg)) return NaN;
 
-  // Apply scheduled capital repayment at M6 if relevant
-  if (months >= 6 && capRepPct > 0){
-    const pay = Math.min(principal, computeCurtailAmt(capRepPct));
-    lineCapRep[6] = -pay;
-    principal -= pay;
-  }
+    let lo = -0.9999;
+    let hi = 5.0;
+    let fLo = npv(lo, cfs);
+    let fHi = npv(hi, cfs);
 
-  // Apply additional curtailment in chosen month (if before/at sale month and pct > 0)
-  // If additional month is 6 as well, it stacks (not redundant by default because pct default is 0).
-  if (addCurtPct > 0 && addCurtMonth <= months){
-    // If additional month is before 6, principal hasn't been reduced by M6 yet; that's intended.
-    // If after 6, it applies to post-M6 principal if base is 'outstanding'.
-    // We need to simulate month-by-month principal if addCurtMonth < 6, because principal hasn't changed yet.
-    // principal currently reflects after M6 payment; so we must compute properly:
-    // Approach: replay principal schedule in chronological order.
-    principal = advanceAmt;
-    // Apply additional first/second depending on month ordering.
-    const events = [];
-    if (months >= 6 && capRepPct > 0) events.push({m:6, type:"cap", pct:capRepPct});
-    events.push({m:addCurtMonth, type:"add", pct:addCurtPct});
-    events.sort((a,b)=>a.m-b.m);
+    let iter=0;
+    while (fLo*fHi > 0 && hi < 100 && iter < 60){
+      hi *= 2;
+      fHi = npv(hi, cfs);
+      iter++;
+    }
+    if (fLo*fHi > 0) return NaN;
 
-    // reset lines (except advance/proc/unit) for cap/add/final
-    lineCapRep.fill(0);
-    lineAddCurt.fill(0);
-
-    for (const e of events){
-      if (e.m > months) continue;
-      if (e.type === "cap"){
-        const amt = Math.min(principal, (capBase === "invoice") ? invoice*e.pct : principal*e.pct);
-        lineCapRep[e.m] += -amt;
-        principal -= amt;
+    for (let i=0; i<140; i++){
+      const mid = (lo+hi)/2;
+      const fMid = npv(mid, cfs);
+      if (Math.abs(fMid) < 1e-9) return mid;
+      if (fLo*fMid <= 0){
+        hi = mid; fHi = fMid;
       }else{
-        const amt = Math.min(principal, (capBase === "invoice") ? invoice*e.pct : principal*e.pct);
-        lineAddCurt[e.m] += -amt;
-        principal -= amt;
+        lo = mid; fLo = fMid;
       }
     }
+    return (lo+hi)/2;
   }
 
-  // If addCurtPct == 0, principal is as computed after M6 (or untouched)
-  // If addCurtPct > 0, principal was computed in the replay block above.
-  // If addCurtPct == 0 and we did M6, principal already reduced; else still full.
+  /* -----------------------------
+     Month dropdown
+  ------------------------------*/
+  function populateCurtailmentMonthDropdown(){
+    const sel = document.getElementById("addCurtMonth");
+    const saleMonth = clampInt(document.getElementById("saleMonth").value, 1, 120);
+    const current = Number(sel.value) || 6;
 
-  // Final payoff at sale month clears remaining principal
-  lineFinalPay[months] = -principal;
-
-  // Net cashflows
-  const net = zeros();
-  for (let m=0; m<=months; m++){
-    net[m] =
-      lineAdvance[m] +
-      lineProcFee[m] +
-      lineUnitFee[m] +
-      lineCapRep[m] +
-      lineAddCurt[m] +
-      lineFinalPay[m];
-  }
-
-  const irrMo = irrMonthly(net);
-  const apr = isFinite(irrMo) ? (Math.pow(1+irrMo, 12) - 1) : NaN;
-
-  return {
-    invoice, advancePct, saleMonth: months, procFee,
-    unitFeePctMo, unitBase, capRepPct, capBase,
-    addCurtPct, addCurtMonth,
-    advanceAmt, unitFeeMonthly,
-    lines: {
-      advance: lineAdvance,
-      procFee: lineProcFee,
-      unitFee: lineUnitFee,
-      capRep: lineCapRep,
-      addCurt: lineAddCurt,
-      finalPay: lineFinalPay,
-      net
-    },
-    irrMo, apr
-  };
-}
-
-/* -----------------------------
-   Table renderer
-------------------------------*/
-function renderTable(model){
-  const months = model.saleMonth;
-  const cols = [];
-  cols.push("M0");
-  for (let m=1; m<=months; m++) cols.push("M"+m);
-
-  function rowHtml(typeLabel, typeClass, name, arr, isNet=false){
-    let t = `<tr>
-      <td class="left ${typeClass}">${typeLabel}</td>
-      <td class="left2 ${typeClass}">${name}</td>`;
-    for (let i=0; i<arr.length; i++){
-      const v = arr[i];
-      const cls = isNet ? "net" : (v<0 ? "neg" : (v>0 ? "pos" : "muted"));
-      t += `<td class="${cls}">${v===0 ? "—" : gbp(v)}</td>`;
+    sel.innerHTML = "";
+    const maxM = Math.max(12, saleMonth);
+    for (let m=1; m<=maxM; m++){
+      const opt = document.createElement("option");
+      opt.value = String(m);
+      opt.textContent = `Month ${m}`;
+      sel.appendChild(opt);
     }
-    t += `</tr>`;
-    return t;
+    sel.value = String(Math.min(Math.max(current, 1), maxM));
   }
 
-  const head = `<table>
-    <thead>
-      <tr>
-        <th class="left">Type</th>
-        <th class="left2">Line Item</th>
-        ${cols.map(c=>`<th>${c}</th>`).join("")}
-      </tr>
-    </thead>
-    <tbody>`;
+  /* -----------------------------
+     Model builder
+  ------------------------------*/
+  function buildModel(){
+    const invoice = Math.max(0, Number(document.getElementById("invoice").value) || 0);
+    const salePrice = Math.max(0, Number(document.getElementById("salePrice").value) || 0);
 
-  const body =
-      rowHtml("Capital", "cap", "Advance proceeds", model.lines.advance)
-    + rowHtml("Fee", "fee", "Processing fee (M0)", model.lines.procFee)
-    + rowHtml("Fee", "fee", `Unit fee (${(model.unitFeePctMo*100).toFixed(4)}%/mo on ${model.unitBase === "advance" ? "Advance" : "Invoice"})`, model.lines.unitFee)
-    + rowHtml("Capital", "cap", `Capital repayment @ M6 (${(model.capRepPct*100).toFixed(2)}% of ${model.capBase === "outstanding" ? "Outstanding" : "Invoice"})`, model.lines.capRep)
-    + rowHtml("Capital", "cap", `Additional curtailment @ M${model.addCurtMonth} (${(model.addCurtPct*100).toFixed(2)}% of ${model.capBase === "outstanding" ? "Outstanding" : "Invoice"})`, model.lines.addCurt)
-    + rowHtml("Capital", "cap", `Final payoff @ M${months}`, model.lines.finalPay)
-    + rowHtml("—", "net", "Net cashflow (IRR input)", model.lines.net, true);
+    const advancePct = Math.max(0, Number(document.getElementById("advancePct").value) || 0) / 100;
+    const saleMonth = clampInt(document.getElementById("saleMonth").value, 1, 120);
 
-  const foot = `</tbody></table>`;
+    const procFee = Math.max(0, Number(document.getElementById("procFee").value) || 0);
 
-  document.getElementById("tableWrap").innerHTML = head + body + foot;
-}
+    const unitFeePctMo = Math.max(0, Number(document.getElementById("unitFeePct").value) || 0) / 100;
+    const unitBase = getRadio("unitBase"); // invoice|advance
 
-/* -----------------------------
-   Populate month dropdown
-------------------------------*/
-function populateCurtailmentMonthDropdown(){
-  const sel = document.getElementById("addCurtMonth");
-  const saleMonth = clampInt(document.getElementById("saleMonth").value, 1, 120);
-  const current = Number(sel.value) || 6;
-  sel.innerHTML = "";
-  for (let m=1; m<=Math.max(12, saleMonth); m++){
-    const opt = document.createElement("option");
-    opt.value = String(m);
-    opt.textContent = `Month ${m}`;
-    sel.appendChild(opt);
+    const capRepPct = Math.max(0, Number(document.getElementById("capRepPct").value) || 0) / 100;
+    const capBase = getRadio("capBase"); // invoice|outstanding (shared with additional)
+
+    const addCurtPct = Math.max(0, Number(document.getElementById("addCurtPct").value) || 0) / 100;
+    const addCurtMonth = clampInt(document.getElementById("addCurtMonth").value, 1, 120);
+
+    const months = saleMonth;
+    const advanceAmt = invoice * advancePct;
+
+    const unitFeeBaseAmt = (unitBase === "advance") ? advanceAmt : invoice;
+    const unitFeeMonthly = unitFeeBaseAmt * unitFeePctMo;
+
+    const zeros = () => Array(months+1).fill(0);
+
+    // Loan cashflow lines (borrower view)
+    const lineAdvance   = zeros();
+    const lineProcFee   = zeros();
+    const lineUnitFee   = zeros();
+    const lineCapRep    = zeros();
+    const lineAddCurt   = zeros();
+    const lineFinalPay  = zeros();
+    const netLoan       = zeros();
+
+    // Principal balance (end-of-month)
+    const principalBal  = Array(months+1).fill(0);
+
+    // Loan: M0
+    lineAdvance[0] = advanceAmt;
+    lineProcFee[0] = -procFee;
+
+    // Loan: fees M1..M_sale
+    for (let m=1; m<=months; m++){
+      lineUnitFee[m] = -unitFeeMonthly;
+    }
+
+    // Build principal schedule with events in chronological order
+    let principal = advanceAmt;
+
+    // event list (month, kind, pct)
+    const events = [];
+    if (months >= 6 && capRepPct > 0) events.push({m: 6, kind: "cap", pct: capRepPct});
+    if (addCurtPct > 0 && addCurtMonth <= months) events.push({m: addCurtMonth, kind: "add", pct: addCurtPct});
+    events.sort((a,b)=>a.m-b.m);
+
+    function curtailAmt(pct){
+      if (pct <= 0) return 0;
+      if (capBase === "invoice") return invoice * pct;
+      return principal * pct;
+    }
+
+    // Month-by-month walk to record principal balance end-of-month
+    let eIdx = 0;
+    for (let m=0; m<=months; m++){
+      // apply any events that happen at this month (principal paydowns)
+      while (eIdx < events.length && events[eIdx].m === m){
+        const e = events[eIdx];
+        const amt = Math.min(principal, curtailAmt(e.pct));
+        if (amt > 0){
+          if (e.kind === "cap") lineCapRep[m] += -amt;
+          else lineAddCurt[m] += -amt;
+          principal -= amt;
+        }
+        eIdx++;
+      }
+
+      // final payoff happens at sale month after any scheduled curtailments that same month
+      if (m === months){
+        lineFinalPay[m] = -principal;
+        principal = 0;
+      }
+
+      principalBal[m] = principal; // end-of-month after events and (at sale month) after payoff => 0
+    }
+
+    // Net loan cashflow (for loan IRR)
+    for (let m=0; m<=months; m++){
+      netLoan[m] =
+        lineAdvance[m] +
+        lineProcFee[m] +
+        lineUnitFee[m] +
+        lineCapRep[m] +
+        lineAddCurt[m] +
+        lineFinalPay[m];
+    }
+
+    const loanIrrMo = irrMonthly(netLoan);
+    const loanApr = isFinite(loanIrrMo) ? (Math.pow(1+loanIrrMo, 12) - 1) : NaN;
+
+    // Fees summary (for absolute return + equity flows)
+    const totalUnitFees = unitFeeMonthly * months;
+    const totalFees = procFee + totalUnitFees;
+
+    // Absolute return definition (per your instruction)
+    const absReturnDollar = salePrice - invoice - totalFees;
+    const absReturnPct = (invoice > 0) ? ((salePrice - totalFees)/invoice - 1) : NaN;
+
+    // Equity cashflows (Option A): M0 = -(invoice - advance + procFee)
+    // Monthly unit fees and any principal paydowns are equity outflows.
+    // Sale month inflow = +salePrice (loan payoff already in principal paydowns + final payoff lines treated as equity outflows)
+    const equity = Array(months+1).fill(0);
+    equity[0] = -(invoice - advanceAmt) - procFee; // equity check + processing fee
+    for (let m=1; m<=months; m++){
+      equity[m] += -unitFeeMonthly;
+      equity[m] += lineCapRep[m];    // already negative
+      equity[m] += lineAddCurt[m];   // already negative
+      equity[m] += lineFinalPay[m];  // negative payoff at sale month
+    }
+    equity[months] += salePrice; // sale proceeds inflow
+
+    const equityIrrMo = irrMonthly(equity);
+    const equityIrr = isFinite(equityIrrMo) ? (Math.pow(1+equityIrrMo, 12) - 1) : NaN;
+
+    // MOIC = total positive / absolute(total negative)
+    let pos=0, neg=0;
+    for (const x of equity){
+      if (x > 0) pos += x;
+      if (x < 0) neg += -x;
+    }
+    const moic = (neg > 0) ? (pos / neg) : NaN;
+
+    return {
+      invoice, salePrice, advancePct, saleMonth: months, procFee,
+      unitFeePctMo, unitBase, capRepPct, capBase,
+      addCurtPct, addCurtMonth,
+      advanceAmt, unitFeeMonthly,
+      totalUnitFees, totalFees,
+      absReturnDollar, absReturnPct,
+      loanIrrMo, loanApr,
+      equityIrr, moic,
+      lines: { lineAdvance, lineProcFee, lineUnitFee, lineCapRep, lineAddCurt, lineFinalPay, netLoan, principalBal },
+      equity
+    };
   }
-  // Default to 6 if not set
-  sel.value = String(Math.min(Math.max(6, 1), Math.max(12, saleMonth)));
-  // If user previously selected something, keep it if still in range
-  if (current && current <= Math.max(12, saleMonth)){
-    sel.value = String(current);
+
+  /* -----------------------------
+     Render KPIs
+  ------------------------------*/
+  function renderKpis(m){
+    document.getElementById("kpiInvoice").textContent = gbp(m.invoice);
+    document.getElementById("kpiAdvance").textContent = gbp(m.advanceAmt);
+    document.getElementById("kpiSalePrice").textContent = gbp(m.salePrice);
+
+    document.getElementById("kpiLoanIrrMo").textContent = isFinite(m.loanIrrMo) ? pct(m.loanIrrMo, 3) : "—";
+    document.getElementById("kpiLoanApr").textContent   = isFinite(m.loanApr)   ? pct(m.loanApr, 2)   : "—";
+
+    const absStr = `${gbp(m.absReturnDollar)}  |  ${isFinite(m.absReturnPct) ? pct(m.absReturnPct, 2) : "—"}`;
+    document.getElementById("kpiAbsReturn").textContent = absStr;
+
+    const roeStr = `${isFinite(m.moic) ? m.moic.toFixed(2) + "x" : "—"}  |  ${isFinite(m.equityIrr) ? pct(m.equityIrr, 2) : "—"}`;
+    document.getElementById("kpiRoe").textContent = roeStr;
   }
-}
 
-/* -----------------------------
-   KPI renderer
-------------------------------*/
-function renderKpis(model){
-  document.getElementById("kpiAdvance").textContent = gbp(model.advanceAmt);
-  document.getElementById("kpiUnitFee").textContent = gbp(model.unitFeeMonthly);
-  document.getElementById("kpiIrrMo").textContent = isFinite(model.irrMo) ? pct(model.irrMo, 3) : "—";
-  document.getElementById("kpiApr").textContent = isFinite(model.apr) ? pct(model.apr, 2) : "—";
-}
+  /* -----------------------------
+     Render table
+  ------------------------------*/
+  function renderTable(m){
+    const months = m.saleMonth;
+    const cols = ["M0"];
+    for (let i=1; i<=months; i++) cols.push("M"+i);
 
-/* -----------------------------
-   Recalc
-------------------------------*/
-function recalc(){
-  // ensure dropdown range covers sale month
-  populateCurtailmentMonthDropdown();
-  const model = buildModel();
-  renderKpis(model);
-  renderTable(model);
-}
+    function rowHtml(typeLabel, typeClass, name, arr, opts={}){
+      const {isNet=false, isBalance=false} = opts;
+      let t = `<tr>
+        <td class="left ${typeClass}">${typeLabel}</td>
+        <td class="left2 ${typeClass}">${name}</td>`;
 
-/* -----------------------------
-   Reset defaults
-------------------------------*/
-function resetDefaults(){
-  document.getElementById("invoice").value = 1000000;
-  document.getElementById("advancePct").value = 80;
-  document.getElementById("saleMonth").value = 12;
-  document.getElementById("procFee").value = 250;
-  document.getElementById("unitFeePct").value = 0.65;
-  document.querySelector(`input[name="unitBase"][value="invoice"]`).checked = true;
-  document.getElementById("capRepPct").value = 10;
-  document.querySelector(`input[name="capBase"][value="invoice"]`).checked = true;
-  document.getElementById("addCurtPct").value = 0;
-  populateCurtailmentMonthDropdown();
-  document.getElementById("addCurtMonth").value = "6";
-  recalc();
-}
+      for (let i=0; i<arr.length; i++){
+        const v = arr[i];
+        let cls = "muted";
+        let text = "—";
 
-/* -----------------------------
-   Wire up events
-------------------------------*/
-document.getElementById("recalc").addEventListener("click", recalc);
-document.getElementById("reset").addEventListener("click", resetDefaults);
+        if (isBalance){
+          cls = "bal";
+          text = gbp(v);
+        } else if (isNet){
+          cls = "net";
+          text = (v===0 ? "—" : gbp(v));
+        } else {
+          if (v !== 0){
+            cls = v < 0 ? "neg" : "pos";
+            text = gbp(v);
+          }
+        }
 
-// Live recalculation on input changes
-[
-  "invoice","advancePct","saleMonth","procFee","unitFeePct","capRepPct","addCurtPct","addCurtMonth"
-].forEach(id=>{
-  document.getElementById(id).addEventListener("input", ()=>{
-    // Keep the add-curtailment month options aligned with sale month changes
-    if (id === "saleMonth") populateCurtailmentMonthDropdown();
+        t += `<td class="${cls}">${text}</td>`;
+      }
+      t += `</tr>`;
+      return t;
+    }
+
+    const unitBaseLabel = (m.unitBase === "advance") ? "Advance" : "Invoice";
+    const capBaseLabel  = (m.capBase === "outstanding") ? "Outstanding" : "Invoice";
+
+    const head = `<table>
+      <thead>
+        <tr>
+          <th class="left">Type</th>
+          <th class="left2">Line Item</th>
+          ${cols.map(c=>`<th>${c}</th>`).join("")}
+        </tr>
+      </thead>
+      <tbody>`;
+
+    const body =
+        rowHtml("Capital", "cap", "Advance proceeds", m.lines.lineAdvance)
+      + rowHtml("Fee", "fee", "Processing fee (M0)", m.lines.lineProcFee)
+      + rowHtml("Fee", "fee", `Unit fee (${(m.unitFeePctMo*100).toFixed(4)}%/mo on ${unitBaseLabel})`, m.lines.lineUnitFee)
+      + rowHtml("Capital", "cap", `Capital repayment @ M6 (${(m.capRepPct*100).toFixed(2)}% of ${capBaseLabel})`, m.lines.lineCapRep)
+      + rowHtml("Capital", "cap", `Additional curtailment @ M${m.addCurtMonth} (${(m.addCurtPct*100).toFixed(2)}% of ${capBaseLabel})`, m.lines.lineAddCurt)
+      + rowHtml("Capital", "cap", `Final payoff @ M${months}`, m.lines.lineFinalPay)
+      + rowHtml("—", "net", "Net cashflow (loan IRR input)", m.lines.netLoan, {isNet:true})
+      + rowHtml("—", "cap", "Outstanding principal balance (end of month)", m.lines.principalBal, {isBalance:true});
+
+    const foot = `</tbody></table>`;
+
+    document.getElementById("tableWrap").innerHTML = head + body + foot;
+
+    // Below-table block (sale price emphasized)
+    const below = `
+      <div>
+        <strong>Sale price assumed at M${months}:</strong> ${gbp(m.salePrice)}
+      </div>
+      <div style="margin-top:6px;">
+        <strong>Total fees:</strong> ${gbp(m.totalFees)} (Processing: ${gbp(m.procFee)}, Unit fees: ${gbp(m.totalUnitFees)})
+      </div>
+      <div style="margin-top:6px;">
+        <strong>Absolute return:</strong> ${gbp(m.absReturnDollar)} (${isFinite(m.absReturnPct) ? pct(m.absReturnPct, 2) : "—"})
+      </div>
+      <div style="margin-top:6px;">
+        <strong>ROE:</strong> ${isFinite(m.moic) ? m.moic.toFixed(2) + "x MOIC" : "—"} | ${isFinite(m.equityIrr) ? pct(m.equityIrr, 2) + " equity IRR" : "—"}
+      </div>
+    `;
+    document.getElementById("belowBlock").innerHTML = below;
+  }
+
+  /* -----------------------------
+     Auto-default sale price (+10%)
+  ------------------------------*/
+  function maybeUpdateSalePriceFromInvoice(){
+    if (salePriceTouched) return;
+    const invoice = Math.max(0, Number(document.getElementById("invoice").value) || 0);
+    const suggested = Math.round(invoice * 1.10);
+    document.getElementById("salePrice").value = String(suggested);
+  }
+
+  /* -----------------------------
+     Recalc
+  ------------------------------*/
+  function recalc(){
+    populateCurtailmentMonthDropdown();
+
+    // keep additional base label in sync
+    const capBase = getRadio("capBase");
+    document.getElementById("addCurtBaseLabel").textContent = (capBase === "outstanding") ? "Outstanding" : "Invoice";
+
+    const model = buildModel();
+    renderKpis(model);
+    renderTable(model);
+  }
+
+  /* -----------------------------
+     Reset defaults
+  ------------------------------*/
+  function resetDefaults(){
+    salePriceTouched = false;
+    document.getElementById("invoice").value = 1000000;
+    document.getElementById("advancePct").value = 80;
+    document.getElementById("saleMonth").value = 12;
+    document.getElementById("procFee").value = 250;
+
+    document.getElementById("unitFeePct").value = 0.65;
+    document.querySelector(`input[name="unitBase"][value="invoice"]`).checked = true;
+
+    document.getElementById("capRepPct").value = 10;
+    document.querySelector(`input[name="capBase"][value="invoice"]`).checked = true;
+
+    document.getElementById("addCurtPct").value = 0;
+
+    populateCurtailmentMonthDropdown();
+    document.getElementById("addCurtMonth").value = "6";
+
+    maybeUpdateSalePriceFromInvoice();
+    recalc();
+  }
+
+  /* -----------------------------
+     Wire up events
+  ------------------------------*/
+  document.getElementById("recalc").addEventListener("click", recalc);
+  document.getElementById("reset").addEventListener("click", resetDefaults);
+
+  // Invoice changes -> update sale price unless user touched it
+  document.getElementById("invoice").addEventListener("input", ()=>{
+    maybeUpdateSalePriceFromInvoice();
     recalc();
   });
-});
-document.querySelectorAll('input[name="unitBase"]').forEach(el=>el.addEventListener("change", recalc));
-document.querySelectorAll('input[name="capBase"]').forEach(el=>el.addEventListener("change", recalc));
 
-// init
-populateCurtailmentMonthDropdown();
-recalc();
+  // Sale price manual edits -> freeze auto-update
+  document.getElementById("salePrice").addEventListener("input", ()=>{
+    salePriceTouched = true;
+    recalc();
+  });
+
+  // Other inputs
+  ["advancePct","saleMonth","procFee","unitFeePct","capRepPct","addCurtPct","addCurtMonth"].forEach(id=>{
+    document.getElementById(id).addEventListener("input", ()=>{
+      if (id === "saleMonth") populateCurtailmentMonthDropdown();
+      recalc();
+    });
+  });
+  document.querySelectorAll('input[name="unitBase"]').forEach(el=>el.addEventListener("change", recalc));
+  document.querySelectorAll('input[name="capBase"]').forEach(el=>el.addEventListener("change", recalc));
+
+  // init
+  populateCurtailmentMonthDropdown();
+  maybeUpdateSalePriceFromInvoice();
+  recalc();
 </script>
 </body>
 </html>
