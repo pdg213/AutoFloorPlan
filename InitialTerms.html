@@ -62,6 +62,10 @@
       grid-template-columns: repeat(7, minmax(150px, 1fr));
       gap: 10px;
     }
+
+    .kpiSpan{
+  grid-column: 1 / -1;
+}
     @media (max-width: 1200px){
       .kpiGrid{ grid-template-columns: repeat(3, minmax(160px, 1fr)); }
     }
@@ -593,73 +597,75 @@
         </div>
       </div>
 
-      <!-- Narrative + Drawer -->
-      <div class="narrativeWrap">
-        <div class="narrativeToggle" id="narrativeToggle" role="button" tabindex="0" aria-expanded="false" aria-controls="narrativeDrawer">
-          <div id="kpiNarrative">—</div>
-          <svg class="chev" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
+   <!-- Narrative + Drawer -->
+<div class="kpiSpan">
+  <div class="narrativeWrap">
+    <div class="narrativeToggle" id="narrativeToggle" role="button" tabindex="0" aria-expanded="false" aria-controls="narrativeDrawer">
+      <div id="kpiNarrative">—</div>
+      <svg class="chev" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+
+    <div class="drawer" id="narrativeDrawer">
+      <div class="drawerInner">
+        <div class="drawerTitle">
+          <h3>Quick cashflow audit</h3>
+          <p class="small">Built from the same cashflows used in KPIs</p>
         </div>
 
-        <div class="drawer" id="narrativeDrawer">
-          <div class="drawerInner">
-            <div class="drawerTitle">
-              <h3>Quick cashflow audit</h3>
-              <p class="small">Built from the same cashflows used in KPIs</p>
+        <div class="drawerGrid">
+          <div class="drawerCard">
+            <div class="hdr">Unit economics</div>
+            <div class="kv">
+              <div class="k">Purchase price (invoice)</div><div class="v" id="drInvoice">—</div>
+              <div class="k">Sale price</div><div class="v" id="drSale">—</div>
+
+              <div class="divider" style="grid-column:1/-1;"></div>
+
+              <div class="k">Processing fee (M0)</div><div class="v" id="drProc">—</div>
+              <div class="k">Total unit fees (M1–MN)</div><div class="v" id="drUnitFees">—</div>
+              <div class="k"><span class="subk">Total interest & fees</span></div><div class="v muted" id="drTotalFees">—</div>
+
+              <div class="divider" style="grid-column:1/-1;"></div>
+
+              <div class="k">Net profit after fees</div><div class="v" id="drProfit">—</div>
+              <div class="k"><span class="subk">Absolute return (% of invoice)</span></div><div class="v muted" id="drAbsPct">—</div>
+            </div>
+          </div>
+
+          <div class="drawerCard">
+            <div class="hdr">Financing + equity tracking</div>
+            <div class="kv">
+              <div class="k">Advance amount</div><div class="v" id="drAdvance">—</div>
+              <div class="k"><span class="subk">Equity at purchase (invoice − advance)</span></div><div class="v muted" id="drDownPay">—</div>
+
+              <div class="divider" style="grid-column:1/-1;"></div>
+
+              <div class="k">Curtailments / principal paydowns (combined)</div><div class="v" id="drCurtail">—</div>
+              <div class="k">Debt repaid at exit (remaining principal)</div><div class="v" id="drDebtExit">—</div>
+
+              <div class="divider" style="grid-column:1/-1;"></div>
+
+              <div class="k">Total equity contributions</div><div class="v" id="drEqContrib">—</div>
+              <div class="k">Total equity distributions</div><div class="v" id="drEqDistrib">—</div>
+              <div class="k"><span class="subk">MOIC (distrib / contrib)</span></div><div class="v muted" id="drMoic">—</div>
+
+              <div class="divider" style="grid-column:1/-1;"></div>
+
+              <div class="k">Profit breakeven sale price</div><div class="v" id="drBreakEven">—</div>
+              <div class="k"><span class="subk">Sale price for 30% equity IRR</span></div><div class="v muted" id="drTarget30">—</div>
             </div>
 
-            <div class="drawerGrid">
-              <div class="drawerCard">
-                <div class="hdr">Unit economics</div>
-                <div class="kv">
-                  <div class="k">Purchase price (invoice)</div><div class="v" id="drInvoice">—</div>
-                  <div class="k">Sale price</div><div class="v" id="drSale">—</div>
-
-                  <div class="divider" style="grid-column:1/-1;"></div>
-
-                  <div class="k">Processing fee (M0)</div><div class="v" id="drProc">—</div>
-                  <div class="k">Total unit fees (M1–MN)</div><div class="v" id="drUnitFees">—</div>
-                  <div class="k"><span class="subk">Total interest & fees</span></div><div class="v muted" id="drTotalFees">—</div>
-
-                  <div class="divider" style="grid-column:1/-1;"></div>
-
-                  <div class="k">Net profit after fees</div><div class="v" id="drProfit">—</div>
-                  <div class="k"><span class="subk">Absolute return (% of invoice)</span></div><div class="v muted" id="drAbsPct">—</div>
-                </div>
-              </div>
-
-              <div class="drawerCard">
-                <div class="hdr">Financing + equity tracking</div>
-                <div class="kv">
-                  <div class="k">Advance amount</div><div class="v" id="drAdvance">—</div>
-                  <div class="k"><span class="subk">Equity at purchase (invoice − advance)</span></div><div class="v muted" id="drDownPay">—</div>
-
-                  <div class="divider" style="grid-column:1/-1;"></div>
-
-                  <div class="k">Curtailments / principal paydowns (combined)</div><div class="v" id="drCurtail">—</div>
-                  <div class="k">Debt repaid at exit (remaining principal)</div><div class="v" id="drDebtExit">—</div>
-
-                  <div class="divider" style="grid-column:1/-1;"></div>
-
-                  <div class="k">Total equity contributions</div><div class="v" id="drEqContrib">—</div>
-                  <div class="k">Total equity distributions</div><div class="v" id="drEqDistrib">—</div>
-                  <div class="k"><span class="subk">MOIC (distrib / contrib)</span></div><div class="v muted" id="drMoic">—</div>
-
-                  <div class="divider" style="grid-column:1/-1;"></div>
-
-                  <div class="k">Profit breakeven sale price</div><div class="v" id="drBreakEven">—</div>
-                  <div class="k"><span class="subk">Sale price for 30% equity IRR</span></div><div class="v muted" id="drTarget30">—</div>
-                </div>
-
-                <div class="note">
-                  Breakeven above is profit breakeven (invoice + fees). MOIC can differ from 1.0x because curtailments change the timing of equity cashflows.
-                </div>
-              </div>
+            <div class="note">
+              Breakeven above is profit breakeven (invoice + fees). MOIC can differ from 1.0x because curtailments change the timing of equity cashflows.
             </div>
           </div>
         </div>
       </div>
+    </div>
+  </div>
+</div>
 
       <!-- shared tooltip element -->
       <div class="tooltip" id="tooltip" aria-hidden="true">
